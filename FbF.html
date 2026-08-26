@@ -15,12 +15,12 @@
             <label for="attr_type">Type:</label>
             <select name="attr_type">
                 <option value="" selected disabled hidden>Choose here</option>
+                <option value="Infantry Squad">Infantry Squad</option>
                 <option value="Infantry Team">Infantry Team</option>
-                <option value="Leader">Leader</option>
-                <option value="Gun">Gun</option>
+                <option value="Individual">Individual</option>
+                <option value="Crewed Weapon">Crewed Weapon</option>
                 <option value="Vehicle">Vehicle</option>
-                <option value="Patrol">Patrol</option>
-                <option value="Jump Off Point">Jump Off Point</option>
+                <option value="Soft Vehicle">Soft Vehicle</option>
                 <option value="System Unit">System Unit</option>
             </select>
             <br>            
@@ -39,46 +39,23 @@
         </div>
         <div class="col">
             <h3>Attributes</h3>
-            <label for="attr_leadertype">If Leader What Kind:</label>
-            <select name="attr_leadertype">
-                <option value="Junior">Junior</option>
-                <option value="Senior">Senior</option>
-            </select>
-            <label for="attr_quality">Quality:</label>
-            <select name="attr_quality">
-                <option value="" selected disabled hidden>Choose Here</option>
-                <option value="Green">Green</option>
-                <option value="Regular">Regular</option>
-                <option value="Elite">Elite</option>
-            </select>
-
-            <label># of Men if Team:</label><input type="text" name="attr_men">
-            <label>Core Unit?:</label><input type="checkbox" name="attr_core" value="1">
-            <label>Able to Detach Scout Team?:</label><input type="checkbox" name="attr_scouts" value="1">
-
-
+            <label>Morale:</label><input type="number" name="attr_morale">
+            <label>Movement:</label><input type="number" name="attr_move">
+            <label>Move or Fire:</label><input type="checkbox" name="attr_movefire" value="1">
             <label>Special Abilities:</label><input type="text" name="attr_special">
 
 
 
             <h3>Vehicle Info</h3>
-            <label>Armour:</label><input type="text" name="attr_armour">
-            <label for="attr_speed">Speed:</label>
-            <select name="attr_speed">
-                <option value="" selected disabled hidden>Choose Here</option>
-                <option value="Slow">Slow</option>
-                <option value="Average">Average</option>
-                <option value="Fast">Fast</option>
-                <option value="Wheeled">Wheeled</option>
-            </select>
-            <label for="attr_armourtype">Armour Type:</label>
-            <select name="attr_armourtype">
-                <option value="" selected disabled hidden>Choose Here</option>
-                <option value="Tank">Tank</option>
-                <option value="Self-Propelled Gun">Self-Propelled Gun</option>
-                <option value="Flak">Flak</option>
-                <option value="Armoured Car">Armoured Car</option>
-                <option value="Halftrack">Halftrack</option>
+            <label>Leader?:</label><input type="checkbox" name="attr_armourLeader" value="1">
+            <label>Front Armour:</label><input type="text" name="attr_armourF">
+            <label>Side/Rear Armour:</label><input type="text" name="attr_armourS">
+            <label for="attr_turret">Turret:</label>
+            <select name="attr_turret">
+                <option value="" selected disabled hidden>Choose here</option>
+                <option value="Superior">Superior</option>
+                <option value="Inferior">Inferior</option>
+                <option value="Fixed">Fixed</option>
             </select>
 
 
