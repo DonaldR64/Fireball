@@ -1336,13 +1336,27 @@ log(this.name)
         }
     }
 
+    const Lookup = (id) => {
+        if (Elements[id]) {
+            return id;
+        } else {
+            let keys = Object.keys(state.Twins.twins);
+            if (keys.includes(id)) {
+                return state.Twins.twins[id];
+            }
+            let id2 = keys.find((key) => state.Twins.twins[key] === id);
+            return id2;
+        }
+    }
+
+
 
     const TokenInfo = (msg) => {
-        let id = msg.selected[0]._id;
+        let id = Lookup(msg.selected[0]._id);
 log(id)
         let element = Elements[id];
         if (!element) {
-            sendChat("","Not in Array");
+            sendChat("","Not in Elements");
             return;
         };
         let label = element.hexLabel;
@@ -1466,8 +1480,8 @@ log(id)
 
     const CheckLOS = (msg) => {
         let Tag = msg.content.split(";");
-        let shooter = Elements[Tag[1]];
-        let target = Elements[Tag[2]];
+        let shooter = Elements[LookUp[Tag[1]]];
+        let target = Elements[LookUp[Tag[2]]];
 
         if (!shooter) {
             sendChat("","Not valid shooter");
@@ -1652,7 +1666,7 @@ log(id)
     }
 
     const SetArmies = () => {
-
+        Elements = {};
         let tokens = findObjs({
             _pageid: Campaign().get("playerpageid"),
             _type: "graphic",
@@ -1661,7 +1675,7 @@ log(id)
         });
         if (page2ID) {
             let tokens2 = findObjs({
-                _pageid: Campaign().get("playerpageid"),
+                _pageid: page2ID,
                 _type: "graphic",
                 _subtype: "token",
                 layer: "objects",
@@ -1775,21 +1789,43 @@ log(tokens.length)
     const TwinTest = (msg) => {
         let element = Elements[msg.selected[0]._id];
         if (!element) {return};
-
-        let token2 = summonToken(element.charID,HexMap[element.hexLabel].centre,{w: element.token.get("width"),h: element.token.get("height")},element.token.get("rotation"),"objects",page2ID);
-//will need to make them have same properties, so maybe make a DuplicateToken function that both summons token and duplicates its properties
-        log(token2)
-
-        sendChat("","!twins " + element.id + " " + token2.id);
-
-
-
-
+        DuplicateElement(element);
+        element.maps = [0,1];
     }
 
 
 
+    const DuplicateElement = (element) => {
+        let token1 = element.token;
+        //create token2
+        let token2 = summonToken(element.charID,HexMap[element.hexLabel].centre,{w: element.token.get("width"),h: element.token.get("height")},element.token.get("rotation"),"objects",page2ID);
 
+        let props = [
+            'left', 'top', 'width', 'height', 'rotation', 'layer', 'isdrawing',
+            'flipv', 'fliph', 'bar1_value', 'bar1_max', 'bar1_link',
+            'bar2_value', 'bar2_max', 'bar2_link', 'bar3_value', 'bar3_max',
+            'bar3_link', 'aura1_radius', 'aura1_color', 'aura1_square',
+            'aura2_radius', 'aura2_color', 'aura2_square', 'tint_color',
+            'statusmarkers', 'showplayers_name', 'showplayers_bar1',
+            'showplayers_bar2', 'showplayers_bar3', 'showplayers_aura1',
+            'showplayers_aura2', 'playersedit_name', 'playersedit_bar1',
+            'playersedit_bar2', 'playersedit_bar3', 'playersedit_aura1',
+            'playersedit_aura2', 'light_radius', 'light_dimradius',
+            'light_otherplayers', 'light_hassight', 'light_angle',
+            'light_losangle', 'lastmove'
+        ];
+
+        if (token2) {
+            token2.set(_.reduce(props,function(m,p){
+                    m[p]=token1.get(p);
+                    return m;
+            },{}));
+        }
+
+        sendChat("","!twins " + element.id + " " + token2.id);
+
+
+    }
 
 
 
