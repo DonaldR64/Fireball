@@ -1353,7 +1353,6 @@ log(this.name)
 
     const TokenInfo = (msg) => {
         let id = Lookup(msg.selected[0]._id);
-log(id)
         let element = Elements[id];
         if (!element) {
             sendChat("","Not in Elements");
@@ -1384,7 +1383,7 @@ log(id)
         let playerID = msg.playerid;
         let id,element,player;
         if (msg.selected) {
-            id = msg.selected[0]._id;
+            id = Lookup(msg.selected[0]._id);
         }
         let nation = "Neutral";
 
@@ -1480,8 +1479,8 @@ log(id)
 
     const CheckLOS = (msg) => {
         let Tag = msg.content.split(";");
-        let shooter = Elements[LookUp[Tag[1]]];
-        let target = Elements[LookUp[Tag[2]]];
+        let shooter = Elements[Lookup(Tag[1])];
+        let target = Elements[Lookup(Tag[2])];
 
         if (!shooter) {
             sendChat("","Not valid shooter");
@@ -1691,7 +1690,6 @@ log(id)
                 tokens.push(token);
             }
         }
-log(tokens.length)
         let sectionMarkers = [0,0];
         let Surnames = DeepCopy(SurnameList);
 
@@ -1847,11 +1845,16 @@ log(tokens.length)
         let prevLabel = new Point(prev.left,prev.top).toCube().label();
         if (element && newLabel !== prevLabel) {
             log(element.name + " moving")
-            let index = HexMap[prevLabel].tokenIDs.indexOf(tok.id);
+            let index = HexMap[prevLabel].tokenIDs[0].indexOf(tok.id);
             if (index > -1) {
-                HexMap[prevLabel].tokenIDs.splice(index,1);
+                HexMap[prevLabel].tokenIDs[0].splice(index,1);
+                HexMap[newLabel].tokenIDs[0].push(tok.id);
             }
-            HexMap[newLabel].tokenIDs.push(tok.id);
+            index = HexMap[prevLabel].tokenIDs[1].indexOf(tok.id);
+            if (index > -1) {
+                HexMap[prevLabel].tokenIDs[1].splice(index,1);
+                HexMap[newLabel].tokenIDs[1].push(tok.id);
+            }
             element.hexLabel = newLabel;
         } 
         if (element && tok.get("rotation") !== prev.rotation) {
@@ -1868,12 +1871,15 @@ log(tokens.length)
             let element = Elements[id];
             if (element) {
                 log(element.name + " removed from Element Array")
-                let index = HexMap[element.hexLabel].tokenIDs.indexOf(id);
+                let index = HexMap[hexLabel].tokenIDs[0].indexOf(id);
                 if (index > -1) {
-                    HexMap[element.hexLabel].tokenIDs.splice(index,1);
+                    HexMap[hexLabel].tokenIDs[0].splice(index,1);
+                }
+                index = HexMap[hexLabel].tokenIDs[1].indexOf(id);
+                if (index > -1) {
+                    HexMap[hexLabel].tokenIDs[1].splice(index,1);
                 }
                 delete Elements[id];
-//section
             }
         }
     }
