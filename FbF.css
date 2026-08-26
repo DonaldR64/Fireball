@@ -41,8 +41,9 @@ main {
     height: 450px;
     grid-gap: 4px;
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr;
     grid-template-areas:"common   common    common  header   header"
+                        "common   common    common  header   header"
                         "common   common    common  special  special"
                         "common   common    common  special  special"
                         "weapon   weapon    weapon  weapon   weapon"
@@ -165,54 +166,25 @@ section {
     background-color:  white;
 }
   
-  
-.toggleweapon:not([value="Vehicle"]) ~ .weaponsone,
-.toggleweapon:not([value="Infantry + AT"]) ~ .weaponstwo,
-.toggleweapon:not([value="Infantry"]) ~ .weaponsthree,
-.toggleweapon:not([value="AT Weapon"]) ~ .weaponsfour,
-.toggleweapon:not([value="Gun"]) ~ .weaponsfive, 
-.toggleweapon:not([value="None"]) ~ .weaponsnil
-{
-    display:  none;
-}
+ 
 
 .weaponinfo {
     display: grid;
     grid-gap: 1px;
-    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 3fr;
-    grid-template-rows: 1fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 2fr;
+    grid-template-rows: 1fr;
     text-align: center;
     align-items: center;
     padding: 3px;
 }
 
-.weaponinfo2 {
-  display: grid;
-  grid-gap: 1px;
-  grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1fr 3fr;
-  grid-template-rows: 1fr 1fr;
-  text-align: center;
-  align-items: center;
-  padding: 3px;
-}
-
-.atweaponinfo {
+.weapons {
     display: grid;
     grid-gap: 1px;
-    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr;
-    text-align: center;
-    align-items: center;
-    padding: 3px;
-}
-
-.weaponinfo3 {
-    display: grid;
-    grid-gap: 1px;
-    grid-template-columns: 2fr 1fr 1fr 3fr;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 2fr;
     grid-template-rows: 1fr 1fr;
     text-align: center;
     align-items: center;
     padding: 3px;
-  }
-  
+}
+
