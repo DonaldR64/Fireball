@@ -1,6 +1,3 @@
-// Github:   https://github.com/shdwjk/Roll20API/blob/master/Twins/Twins.js
-// By:       The Aaron, Arcane Scriptomancer
-// Contact:  https://app.roll20.net/users/104025/the-aaron
 
 var Twins = Twins || (function() {
     'use strict';
@@ -55,8 +52,7 @@ var Twins = Twins || (function() {
 
     handleInput = function(msg) {
         var args,t1,t2;
-
-        if (msg.type !== "api" || !playerIsGM(msg.playerid)) {
+        if (msg.type !== "api") {
             return;
         }
 
