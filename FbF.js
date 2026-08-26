@@ -96,7 +96,7 @@ const Main = (() => {
             "fontColour": "#000000",
             "borderColour": "#FF0000",
             "borderStyle": "5px ridge",
-            "teammarkers": ["letters_and_numbers0099::4815235","letters_and_numbers0100::4815236","letters_and_numbers0101::4815237","letters_and_numbers0102::4815238","letters_and_numbers0103::4815239","letters_and_numbers0104::4815240","letters_and_numbers0105::4815241","letters_and_numbers0106::4815242","letters_and_numbers0107::4815243","letters_and_numbers0108::4815244"],       
+            "elementmarkers": ["letters_and_numbers0099::4815235","letters_and_numbers0100::4815236","letters_and_numbers0101::4815237","letters_and_numbers0102::4815238","letters_and_numbers0103::4815239","letters_and_numbers0104::4815240","letters_and_numbers0105::4815241","letters_and_numbers0106::4815242","letters_and_numbers0107::4815243","letters_and_numbers0108::4815244"],       
         },
         "Germany": {
             "image": "https://s3.amazonaws.com/files.d20.io/images/329415788/ypEgv2eFi-BKX3YK6q_uOQ/thumb.png?1677173028",
@@ -106,7 +106,7 @@ const Main = (() => {
             "fontColour": "#FFFFFF",
             "borderColour": "#000000",
             "borderStyle": "5px double",
-            "teammarkers": ["letters_and_numbers0197::4815333","letters_and_numbers0198::4815334","letters_and_numbers0199::4815335","letters_and_numbers0200::4815336","letters_and_numbers0201::4815337","letters_and_numbers0202::4815338","letters_and_numbers0203::4815339","letters_and_numbers0204::4815340","letters_and_numbers0205::4815341","letters_and_numbers0206::4815342"],   
+            "elementmarkers": ["letters_and_numbers0197::4815333","letters_and_numbers0198::4815334","letters_and_numbers0199::4815335","letters_and_numbers0200::4815336","letters_and_numbers0201::4815337","letters_and_numbers0202::4815338","letters_and_numbers0203::4815339","letters_and_numbers0204::4815340","letters_and_numbers0205::4815341","letters_and_numbers0206::4815342"],   
         },
         "UK": {
             "image": "https://s3.amazonaws.com/files.d20.io/images/330506939/YtTgDTM3q7p8m0fJ4-E13A/thumb.png?1677713592",
@@ -116,7 +116,7 @@ const Main = (() => {
             "fontColour": "#FFFFFF",
             "borderColour": "#BC2D2F",
             "borderStyle": "5px groove",
-            "teammarkers": ["letters_and_numbers0148::4815284","letters_and_numbers0149::4815285","letters_and_numbers0150::4815286","letters_and_numbers0151::4815287","letters_and_numbers0152::4815288","letters_and_numbers0153::4815289","letters_and_numbers0154::4815290","letters_and_numbers0155::4815291","letters_and_numbers0156::4815292","letters_and_numbers0157::4815293"],
+            "elementmarkers": ["letters_and_numbers0148::4815284","letters_and_numbers0149::4815285","letters_and_numbers0150::4815286","letters_and_numbers0151::4815287","letters_and_numbers0152::4815288","letters_and_numbers0153::4815289","letters_and_numbers0154::4815290","letters_and_numbers0155::4815291","letters_and_numbers0156::4815292","letters_and_numbers0157::4815293"],
         },
         "USA": {
             "image": "https://s3.amazonaws.com/files.d20.io/images/327595663/Nwyhbv22KB4_xvwYEbL3PQ/thumb.png?1676165491",
@@ -126,7 +126,7 @@ const Main = (() => {
             "fontColour": "#006400",
             "borderColour": "#006400",
             "borderStyle": "5px double",
-            "teammarkers": ["letters_and_numbers0050::4815186","letters_and_numbers0051::4815187","letters_and_numbers0052::4815188","letters_and_numbers0053::4815189","letters_and_numbers0054::4815190","letters_and_numbers0055::4815191","letters_and_numbers0056::4815192","letters_and_numbers0057::4815193","letters_and_numbers0058::4815194","letters_and_numbers0059::4815195"],
+            "elementmarkers": ["letters_and_numbers0050::4815186","letters_and_numbers0051::4815187","letters_and_numbers0052::4815188","letters_and_numbers0053::4815189","letters_and_numbers0054::4815190","letters_and_numbers0055::4815191","letters_and_numbers0056::4815192","letters_and_numbers0057::4815193","letters_and_numbers0058::4815194","letters_and_numbers0059::4815195"],
             "scouts": "-P-oD8_2dgCGY0wMiXQa",
         },
 
@@ -705,7 +705,7 @@ const Main = (() => {
 
     }
 
-    class Team {
+    class Element {
         constructor(id) {
             let token = findObjs({_type:"graphic", id: id})[0];
             let cube = (new Point(token.get("left"),token.get("top"))).toCube();
@@ -739,38 +739,11 @@ const Main = (() => {
             this.player = player;
             this.token = token;
             this.type = aa.type;
-            this.core = (aa.core === "1") ? true:false;
-            this.maxHP = parseInt(aa.men) || "";
-            this.quality = aa.quality;
-            this.leaderType = aa.leadertype || "None";
-            let maxShock = 0;
-            this.formScouts = aa.scouts === "1" ? true:false;
-            this.isScout = (this.type === "Infantry" && this.name.includes("Scout")) ? true:false;
-
-            this.special = aa.special;
-            this.speed = aa.speed || "Foot";
-            this.armourType = aa.armourtype || "None";
-            this.bar2 = "";
-            if (this.type === "Leader") {
-                this.maxHP = "";
-                this.bar2 = (this.leaderType === "Senior") ? 3:2;
-                maxShock = "";
-            }
-            if (this.maxHP !== "") {
-                maxShock = 2 * this.maxHP;
-            }
-            if (this.type === "Vehicle") {
-                maxShock = 4;
-            }
-            this.maxShock = maxShock;
-
+        
             let weaponArray = [];
 
 
 log(this.name)
-
-
-
 
             this.sectionID = state.FbF.sectionIDs[id] || "None";
                         
@@ -845,15 +818,15 @@ log(this.name)
         if (newObj) {return newObj.id};
     }    
 
-    const AddAbilities = (team) => {
+    const AddAbilities = (element) => {
         let abilityName,action;
-        let abilArray = findObjs({_type: "ability", _characterid: team.charID});
+        let abilArray = findObjs({_type: "ability", _characterid: element.charID});
         //clear old abilities
         for(let a=0;a<abilArray.length;a++) {
             abilArray[a].remove();
         } 
-        AddAbility("Info","!TokenInfo",team.charID);
-        AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",team.charID);
+        AddAbility("Info","!TokenInfo",element.charID);
+        AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",element.charID);
 
 
 
@@ -1144,15 +1117,16 @@ log(this.name)
                 _subtype: "token",
                 layer: "objects",
             });
-        }
-        let twinKeys = Object.keys(state.Twins.twins) || [];
-        let twinValues = Object.values[state.Twins.twins] || [];
-        for (let i=0;i<tokens2.length;i++) {
-            let token = tokens2[i];
-            if (twinKeys.includes(token.id) || twinValues.includes(token.id)) {
-                continue;
+            //skip twinned tokens
+            let twinKeys = Object.keys(state.Twins.twins) || [];
+            let twinValues = Object.values[state.Twins.twins] || [];
+            for (let i=0;i<tokens2.length;i++) {
+                let token = tokens2[i];
+                if (twinKeys.includes(token.id) || twinValues.includes(token.id)) {
+                    continue;
+                }
+                tokens.push(token);
             }
-            tokens.push(token);
         }
 
         let c = tokens.length + tokens2.length;
@@ -1161,12 +1135,12 @@ log(this.name)
         tokens.forEach((token) => {
             let character = getObj("character", token.get("represents"));   
             if (character) {
-                let team = new Team(token.get("id"));
+                let element = new Element(token.get("id"));
             }
         });
 
         let elapsed = Date.now()-start;
-        log(`${c} token${s} checked in ${elapsed/1000} seconds - ` + Object.keys(Elements).length + " placed in Team Array");
+        log(`${c} token${s} checked in ${elapsed/1000} seconds - ` + Object.keys(Elements).length + " placed in Element Array");
 
     }
 
@@ -1217,9 +1191,6 @@ log(this.name)
                     }
                 }
             }
-
-
-
         });
         //Add Token Terrain, Building might be multihex
         let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
@@ -1354,17 +1325,17 @@ log(this.name)
     const TokenInfo = (msg) => {
         let id = msg.selected[0]._id;
 log(id)
-        let team = Elements[id];
-        if (!team) {
+        let element = Elements[id];
+        if (!element) {
             sendChat("","Not in Array");
             return;
         };
-        let label = team.hexLabel;
+        let label = element.hexLabel;
         let hex = HexMap[label];
-        SetupCard(team.name,"Info",team.nation);
+        SetupCard(element.name,"Info",element.nation);
         outputCard.body.push("Hex Label: " + label);
-        if (team.Offmap()) {
-            outputCard.body.push("Team is Off Map");
+        if (element.Offmap()) {
+            outputCard.body.push("Element is Off Map");
         }
         outputCard.body.push("Elevation: " + (hex.elevation * 30) + " feet");
         outputCard.body.push("Terrain: " + hex.terrain);
@@ -1378,14 +1349,11 @@ log(id)
         PrintCard();
     }
 
-
-
-
     const RollDice = (msg) => {
         PlaySound("Dice");
         let roll = randomInteger(6);
         let playerID = msg.playerid;
-        let id,team,player;
+        let id,element,player;
         if (msg.selected) {
             id = msg.selected[0]._id;
         }
@@ -1395,13 +1363,13 @@ log(id)
             return;
         }
         if (id) {
-            team = Elements[id];
-            if (team) {
-                nation = team.nation;
-                player = team.player;
+            element = Elements[id];
+            if (element) {
+                nation = element.nation;
+                player = element.player;
             }
         }
-        if ((!id || !team) && playerID) {
+        if ((!id || !element) && playerID) {
             nation = state.FbF.players[playerID];
             player = (state.FbF.nations[0] === nation) ? 0:1;
         }
@@ -1425,7 +1393,7 @@ log(id)
         let Tag = msg.content.split(";");
         LoadPage();
 
-        //RemoveDead();
+        RemoveDead();
 
         BuildMap();
 
@@ -1438,7 +1406,7 @@ log(id)
             nations: [],
             turn: 0,
             losLines: [],
-            sectionIDs: {}, //ref by teamID - shows the sectionID
+            sectionIDs: {}, //ref by elementID - shows the sectionID
             sectionMarkers: {}, //ref by sectionID - shows the marker
         }
 
@@ -1448,6 +1416,10 @@ log(id)
 
     const RemoveDead = () => {
         let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
+        if (page2ID) {
+            let tokens2 = findObjs({_pageid: page2ID,_type: "graphic",_subtype: "token",layer: "map",});
+            tokens = tokens.concat(tokens2);
+        }
         _.each(tokens,token => {
             if (token.get("status_dead") === true) {
                 token.remove();
@@ -1514,8 +1486,7 @@ log(id)
 
 
     const LOS = (shooter,target) => {
-        let blockers = ["Infantry Team","Gun","Vehicle"];
-        let notes = [];
+        let blockers = [];
         let shooterHex = HexMap[shooter.hexLabel];
         let targetHex = HexMap[target.hexLabel];
         let distance = shooter.Distance(target);
@@ -1530,7 +1501,6 @@ log(id)
         let finalLOS = true;
         let interCoverFinal = 0;
         let finalBlockedHexLabel;
-        let hexCover = false;
         let finalLOSReason = "";
  
         let interCubes = [shooterHex.cube.linedraw(targetHex.cube),shooterHex.cube.linedraw2(targetHex.cube)];
@@ -1558,15 +1528,15 @@ log(id)
                 }
                 //Intervening Units
                 if (interHex.tokenIDs.length > 0 && interHex.label !== targetHex.label) {
-                    let team2 = Elements[interHex.tokenIDs[0]];
-                    if (team2 && blockers.includes(team2.type)) {
+                    let element2 = Elements[interHex.tokenIDs[0]];
+                    if (element2 && blockers.includes(element2.type)) {
                         let h = .3
                         pt3 = new Point(i+1,0);
                         pt4 = new Point(i+1,(interHex.elevation + h));
                         line1 = lineLine(pt1,pt2,pt3,pt4); //intersection
                         if (line1) {
                             los[side] = false;
-                            losReason[side] = team2.name;
+                            losReason[side] = element2.name;
                             blockedHexLabels[side] = interHex.label;
                             break;
                         }
@@ -1675,6 +1645,25 @@ log(id)
             _subtype: "token",
             layer: "objects",
         });
+        let tokens2;
+        if (page2ID) {
+            let tokens2 = findObjs({
+                _pageid: Campaign().get("playerpageid"),
+                _type: "graphic",
+                _subtype: "token",
+                layer: "objects",
+            });
+            //skip twinned tokens
+            let twinKeys = Object.keys(state.Twins.twins) || [];
+            let twinValues = Object.values[state.Twins.twins] || [];
+            for (let i=0;i<tokens2.length;i++) {
+                let token = tokens2[i];
+                if (twinKeys.includes(token.id) || twinValues.includes(token.id)) {
+                    continue;
+                }
+                tokens.push(token);
+            }
+        }
         
         let sectionMarkers = [0,0];
         let Surnames = DeepCopy(SurnameList);
@@ -1686,22 +1675,22 @@ log(id)
             let token = tokens[i];
             let character = getObj("character", token.get("represents"));   
             if (!character) {continue};
-            let team = new Team(token.get("id"));
+            let element = new Element(token.get("id"));
             for (let j=0;j<groups.length;j++) {
-                if (groups[j].includes(team.id)) {
+                if (groups[j].includes(element.id)) {
                     continue tokenLoop;
                 }
             }
-            let group = [team.id];
-            if (team.player < 2) {
-                let hex = HexMap[team.hexLabel];
+            let group = [element.id];
+            if (element.player < 2) {
+                let hex = HexMap[element.hexLabel];
                 let neighbourCubes = hex.cube.neighbours();
                 _.each(neighbourCubes, cube => {
                     let hex2 = HexMap[cube.label()];
                     if (hex2) {
                         for (let k=0;k<hex2.tokenIDs.length;k++) {
-                            let team2 = new Team(hex2.tokenIDs[k]);
-                            group.push(team2.id);
+                            let element2 = new Element(hex2.tokenIDs[k]);
+                            group.push(element2.id);
                         }
                     }
                 })
@@ -1712,38 +1701,25 @@ log(id)
             let group = groups[i];
             let sectionID = "None";
             let sectionMarker = "None";
-            let refTeam = Elements[group[0]];
-            if (group.length > 1 && refTeam.player < 2) {
+            let refElement = Elements[group[0]];
+            if (group.length > 1 && refElement.player < 2) {
                 sectionID = stringGen();
-                sectionMarker = Nations[refTeam.nation].teammarkers[refTeam.player];
+                sectionMarker = Nations[refElement.nation].elementmarkers[refElement.player];
                 state.FbF.sectionMarkers[sectionID] = sectionMarker;
             };
             for (let j=0;j<group.length;j++) {
-                let team = Elements[group[j]];
-                let name = team.charName.split(",")[0].trim();
-                if (team.type === "Leader") {
-                    let index = randomInteger(Surnames[team.nation].length) - 1;
-                    let surname = Surnames[team.nation].splice(index,1);
+                let element = Elements[group[j]];
+                let name = element.charName.split(",")[0].trim();
+                if (element.type === "Leader") {
+                    let index = randomInteger(Surnames[element.nation].length) - 1;
+                    let surname = Surnames[element.nation].splice(index,1);
                     name += " " + surname;
                 }
 
-                let shock = (team.type === "Leader") ? "":0;
 
-                let ds = team.type === "Leader" ? true:false;
-                let bar2 = team.type === "Leader" ? team.bar2:"";
-                team.token.set({
+                let ds = element.type === "Leader" ? true:false;
+                element.token.set({
                     name: name,
-                    bar1_value: team.maxHP,
-                    bar1_max: team.maxHP,
-                    showplayers_bar1: true,
-                    bar2_value: bar2,
-                    bar2_max: bar2,
-                    showplayers_bar2: true,
-                    bar3_value: shock,
-                    bar3_max: team.maxShock,
-                    showplayers_bar3: true,
-                    bar_location: "overlap_bottom",
-                    compact_bar: "compact",
                     aura1_color: "#00ff00",
                     aura1_radius: 0.1,
                     aura2_color: "transparent",
@@ -1756,16 +1732,16 @@ log(id)
                     tint_color: "transparent",
                     disableSnapping: ds,
                 })
-                team.name = name;
-                team.sectionID = sectionID;
+                element.name = name;
+                element.sectionID = sectionID;
                 if (sectionMarker !== "None") {
-                    team.token.set("status_" + sectionMarker,true);
+                    element.token.set("status_" + sectionMarker,true);
                 }
-                state.FbF.sectionIDs[team.id] = sectionID;
-                AddAbilities(team);
+                state.FbF.sectionIDs[element.id] = sectionID;
+                AddAbilities(element);
             }
             if (sectionMarker !== "None") {
-                sectionMarkers[refTeam.player]++;
+                sectionMarkers[refElement.player]++;
             }
         }
 
@@ -1776,130 +1752,17 @@ log(id)
     }
 
 
-    const FormScouts = (msg) => {
-        let Tag = msg.content.split(";");
-//leader orders check and decrement
-        let leaderTeam = Elements[Tag[1]];
-        let errorMsg = [];
-
-        let orders = parseInt(leaderTeam.token.get("bar2_value"));
-        if (orders === 0) {
-            errorMsg.push("No Orders Left");
-        }
-        let parentTeam = Elements[Tag[2]];
-        if (parentTeam.nation !== leaderTeam.nation) {
-            errorMsg.push("Not Same Nation");
-        }
-        SetupCard(leaderTeam.name,"Form Scouts",leaderTeam.nation);
-        let currentMen = parseInt(parentTeam.token.get("bar1_value"));
-        if (currentMen <= 3) {
-            errorMsg.push("Not enough men")
-        }
-        if (parentTeam.formScouts === false) {
-            errorMsg.push("Target Unit Cannot form a Scout Team")
-        }
-        if (ErrorMsg(errorMsg)) {
-            PrintCard();
-            return;
-        }
-
-        orders--;
-        leaderTeam.token.set("bar2_value",orders);
-
-
-        let scoutCharID = Nations[parentTeam.nation].scouts;
-        let neighbourCubes = HexMap[parentTeam.hexLabel].cube.neighbours();
-        let adjHex = HexMap[parentTeam.hexLabel]; //default
-        for (let i=0;i<neighbourCubes.length;i++) {
-            let hex = HexMap[neighbourCubes[i].label()];
-            if (hex.tokenIDs.length === 0) {
-                adjHex = hex;
-                break;
-            }
-        }
-        let scoutToken = summonToken(scoutCharID,adjHex.centre.x, adjHex.centre.y,256,0,"objects",true);
-        parentTeam.token.set("bar1_value",(currentMen - 2));
-        let scoutTeam = new Team(scoutToken.id);
-        let name = scoutTeam.charName.split(",")[0].trim();
-        scoutTeam.token.set({
-            name: name,
-            bar1_value: 2,
-            bar1_max: 2,
-            showplayers_bar1: true,
-            bar2_value: "",
-            bar2_max: "",
-            showplayers_bar2: true,
-            bar3_value: 0,
-            bar3_max: scoutTeam.maxShock,
-            showplayers_bar3: true,
-            bar_location: "overlap_bottom",
-            compact_bar: "compact",
-            aura1_color: "#00ff00",
-            aura1_radius: 0.1,
-            aura2_color: "transparent",
-            showplayers_aura1: true,
-            tooltip: "",
-            show_tooltip: true,
-            showplayers_tooltip: true,
-            showplayers_name: true,
-            statusmarkers: "",
-            tint_color: "transparent",
-            disableSnapping: false,
-        })
-        scoutTeam.name = name;
-        scoutTeam.isScout = true;
-        scoutTeam.sectionID = parentTeam.sectionID;
-        state.FbF.sectionIDs[scoutTeam.id] = parentTeam.sectionID;
-        scoutTeam.token.set("status_" + state.FbF.sectionMarkers[parentTeam.sectionID],true);
-        AddAbilities(scoutTeam);
-        outputCard.body.push("Scout Team Formed")
-        outputCard.body.push("Remaining Orders: " + orders);
-        PrintCard();
-    }
-
-    const Reform = (msg) => {
-        let Tag = msg.content.split(";")
-        let scoutTeam = Elements[Tag[1]];
-        let targetTeam = Elements[Tag[2]];
-        let errorMsg = [];
-        SetupCard(scoutTeam.name,"Reform",scoutTeam.nation);
-        if (scoutTeam.sectionID !== targetTeam.sectionID) {
-            errorMsg.push("Not Parent Unit");
-        }
-        if (scoutTeam.Distance(targetTeam) > 1) {
-            errorMsg.push("Need to be adjacent");
-        }
-        if (ErrorMsg(errorMsg)) {
-            PrintCard();
-            return;
-        }
-        let targetMen = parseInt(targetTeam.token.get("bar1_value"));
-        let scoutMen = parseInt(scoutTeam.token.get("bar1_value"));
-        targetMen += scoutMen;
-        targetTeam.token.set("bar1_value",targetMen);
-
-        let targetShock = parseInt(targetTeam.token.get("bar3_value"));
-        let scoutSchock = parseInt(scoutTeam.token.get("bar3_value"));
-        targetShock += scoutSchock;
-        targetTeam.token.set("bar3_value",targetShock);
-
-//check for pinned for targetTeam
-
-        scoutTeam.token.remove();
-        outputCard.body.push("Rejoined Parent Unit");
-        PrintCard();
-    }
 
 
     const TwinTest = (msg) => {
-        let team = Elements[msg.selected[0]._id];
-        if (!team) {return};
+        let element = Elements[msg.selected[0]._id];
+        if (!element) {return};
 
-        let token2 = summonToken(team.charID,HexMap[team.hexLabel].centre,{w: team.token.get("width"),h: team.token.get("height")},team.token.get("rotation"),"objects",page2ID);
+        let token2 = summonToken(element.charID,HexMap[element.hexLabel].centre,{w: element.token.get("width"),h: element.token.get("height")},element.token.get("rotation"),"objects",page2ID);
 //will need to make them have same properties, so maybe make a DuplicateToken function that both summons token and duplicates its properties
         log(token2)
 
-        sendChat("","!twins " + team.id + " " + token2.id);
+        sendChat("","!twins " + element.id + " " + token2.id);
 
 
 
@@ -1925,20 +1788,20 @@ log(id)
 
 
     const changeGraphic = (tok,prev) => {
-        let team = Elements[tok.id];
+        let element = Elements[tok.id];
         let newLabel = new Point(tok.get("left"),tok.get("top")).toCube().label();
         let prevLabel = new Point(prev.left,prev.top).toCube().label();
-        if (team && newLabel !== prevLabel) {
-            log(team.name + " moving")
+        if (element && newLabel !== prevLabel) {
+            log(element.name + " moving")
             let index = HexMap[prevLabel].tokenIDs.indexOf(tok.id);
             if (index > -1) {
                 HexMap[prevLabel].tokenIDs.splice(index,1);
             }
             HexMap[newLabel].tokenIDs.push(tok.id);
-            team.hexLabel = newLabel;
+            element.hexLabel = newLabel;
         } 
-        if (team && tok.get("rotation") !== prev.rotation) {
-            log(team.name + " turning")
+        if (element && tok.get("rotation") !== prev.rotation) {
+            log(element.name + " turning")
             let phi = Angle(tok.get("rotation"));
             phi = Math.round(phi/30) * 30;
             tok.set("rotation",phi);
@@ -1948,12 +1811,12 @@ log(id)
     const destroyGraphic = (obj) => {
         let id = obj.get("id");
         if (id) {
-            let team = Elements[id];
-            if (team) {
-                log(team.name + " removed from Team Array")
-                let index = HexMap[team.hexLabel].tokenIDs.indexOf(id);
+            let element = Elements[id];
+            if (element) {
+                log(element.name + " removed from Element Array")
+                let index = HexMap[element.hexLabel].tokenIDs.indexOf(id);
                 if (index > -1) {
-                    HexMap[team.hexLabel].tokenIDs.splice(index,1);
+                    HexMap[element.hexLabel].tokenIDs.splice(index,1);
                 }
                 delete Elements[id];
 //section
@@ -1978,7 +1841,7 @@ log(id)
                 log(HexMap)
                 log("State");
                 log(state.FbF);
-                log("Team");
+                log("Element");
                 log(Elements)
                 break;
             case '!ClearState':
@@ -1995,12 +1858,6 @@ log(id)
                 break;
             case '!SetArmies':
                 SetArmies(msg);
-                break;
-            case '!FormScouts':
-                FormScouts(msg);
-                break;
-            case '!Reform':
-                Reform(msg);
                 break;
             case '!TwinTest':
                 TwinTest(msg);
