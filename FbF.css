@@ -1,0 +1,218 @@
+/*Configure the tab buttons*/
+.sheet-input,
+.sheet-display {
+    display: none;
+}
+
+/* show the selected tab */
+.sheet-tabstoggle[value="input"] ~ div.sheet-input,
+.sheet-tabstoggle[value="display"] ~ div.sheet-display {
+    display: block;
+}
+
+
+.mysheet {
+    width: 830px;
+    height: 480px;
+}
+.attributes {
+    padding: 15px 0px 0px 15px;
+}
+
+input[type="hidden"][name="attr_nation"] ~ .mysheet {
+    background-color: lightgray;
+}
+input[type="hidden"][name="attr_nation"][value="USA"] ~ .mysheet {
+    background-color: darkgreen;
+}
+input[type="hidden"][name="attr_nation"][value="Germany"] ~ .mysheet {
+    background-color: black;
+}
+input[type="hidden"][name="attr_nation"][value="Soviet"] ~ .mysheet {
+    background-color: red;
+}
+input[type="hidden"][name="attr_nation"][value="UK"] ~ .mysheet {
+    background-color: #0A2065;
+}
+
+main {
+    display: grid;
+    width: 800px;
+    height: 450px;
+    grid-gap: 4px;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-areas:"common   common    common  header   header"
+                        "common   common    common  special  special"
+                        "common   common    common  special  special"
+                        "weapon   weapon    weapon  weapon   weapon"
+                        "weapon   weapon    weapon  weapon   weapon";
+  }
+
+
+/*----------------- GENERAL CSS ------------------*/
+
+section {
+    padding: 5px;
+    border-style: solid;
+}
+
+/* CSS Flexbox styling, used for adjusting how content inside section behaves */
+.f-col {
+  display: flex;
+  flex-direction: column;
+}
+.f-row {
+  display: flex;
+  flex-direction: row;
+  justify-items: all;
+}
+.wrap {
+  display: flex;
+  flex-wrap: wrap;
+}
+.nowrap {
+  display: flex;
+  flex-wrap: nowrap;
+}
+.f-center {
+  align-items: center;
+  justify-content: center;
+}
+
+
+/*----------------- Text & Input styling -----------------*/
+
+/* these are for overwriting default CSS that comes from Roll20 */
+
+.charsheet * {
+  font-family: "serif;";
+}
+
+.charsheet h1{
+  text-align: center;
+  color: white;
+}
+.charsheet h2{
+  text-align: center;
+  color:  darkred;
+}
+.charsheet h3{
+  text-align: center;
+  color: black
+}
+
+.charsheet h4{
+  text-align: center;
+  color: darkred;
+}
+
+.charsheet h5{
+  text-align: center;
+  color: darkred;
+}
+
+
+
+/*------------- Section-specific CSS -------------*/
+
+
+.header {
+    grid-area: header;
+    flex-direction: center;
+    border-style: none;
+  }
+
+.header h2{
+  text-align: center;
+  color: white;
+}
+
+.header h3{
+  text-align: center;
+  color: white;
+}
+
+.special {
+    grid-area: special;
+    flex-direction: center;
+    border-style: none;
+}
+
+.special h3{
+  text-align: center;
+  color: white;
+}
+
+.common {
+    grid-area: common;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: white;
+  }
+  
+.common > img {
+    object-fit: contain;
+    width: 100%;
+    max-height: 100%;
+    align-self: center;
+    justify-self: center;
+}
+  
+.weapon {
+    grid-area: weapon;
+    background-color:  white;
+}
+  
+  
+.toggleweapon:not([value="Vehicle"]) ~ .weaponsone,
+.toggleweapon:not([value="Infantry + AT"]) ~ .weaponstwo,
+.toggleweapon:not([value="Infantry"]) ~ .weaponsthree,
+.toggleweapon:not([value="AT Weapon"]) ~ .weaponsfour,
+.toggleweapon:not([value="Gun"]) ~ .weaponsfive, 
+.toggleweapon:not([value="None"]) ~ .weaponsnil
+{
+    display:  none;
+}
+
+.weaponinfo {
+    display: grid;
+    grid-gap: 1px;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 3fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    text-align: center;
+    align-items: center;
+    padding: 3px;
+}
+
+.weaponinfo2 {
+  display: grid;
+  grid-gap: 1px;
+  grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1fr 3fr;
+  grid-template-rows: 1fr 1fr;
+  text-align: center;
+  align-items: center;
+  padding: 3px;
+}
+
+.atweaponinfo {
+    display: grid;
+    grid-gap: 1px;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    text-align: center;
+    align-items: center;
+    padding: 3px;
+}
+
+.weaponinfo3 {
+    display: grid;
+    grid-gap: 1px;
+    grid-template-columns: 2fr 1fr 1fr 3fr;
+    grid-template-rows: 1fr 1fr;
+    text-align: center;
+    align-items: center;
+    padding: 3px;
+  }
+  
