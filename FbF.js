@@ -676,7 +676,7 @@ const Main = (() => {
             let offset = point.toOffset();
             this.offset = offset;
             this.terrain = "Open";
-            this.tokenIDs = [];
+            this.tokenIDs = [[],[]];
             this.cube = offset.toCube();
             this.label = offset.label();
             this.elevation = 0;
@@ -740,18 +740,33 @@ const Main = (() => {
             this.token = token;
             this.type = aa.type;
         
+
+
+
             let weaponArray = [];
 
 
 log(this.name)
 
             this.sectionID = state.FbF.sectionIDs[id] || "None";
-                        
-            Elements[id] = this;
-            let index = HexMap[label].tokenIDs.indexOf(id);
+            let maps = [];
+            let index = HexMap[label].tokenIDs[0].indexOf(id);
             if (index < 0) {
-                HexMap[label].tokenIDs.push(id);
+                HexMap[label].tokenIDs[0].push(id);
+                maps.push(0);
             }
+            index = HexMap[label].tokenIDs[1].indexOf(id);
+            if (index < 0) {
+                HexMap[label].tokenIDs[1].push(id);
+                maps.push(1);
+            }
+            this.maps = maps;
+
+
+            Elements[id] = this;    
+        
+
+
 
 
         }
@@ -1638,14 +1653,12 @@ log(id)
 
     const SetArmies = () => {
 
-//modify for both maps
         let tokens = findObjs({
             _pageid: Campaign().get("playerpageid"),
             _type: "graphic",
             _subtype: "token",
             layer: "objects",
         });
-        let tokens2;
         if (page2ID) {
             let tokens2 = findObjs({
                 _pageid: Campaign().get("playerpageid"),
@@ -1664,7 +1677,7 @@ log(id)
                 tokens.push(token);
             }
         }
-        
+log(tokens.length)
         let sectionMarkers = [0,0];
         let Surnames = DeepCopy(SurnameList);
 
@@ -1687,8 +1700,13 @@ log(id)
                 let neighbourCubes = hex.cube.neighbours();
                 _.each(neighbourCubes, cube => {
                     let hex2 = HexMap[cube.label()];
-                    if (hex2) {
-                        for (let k=0;k<hex2.tokenIDs.length;k++) {
+                    if (hex2 && element.maps.includes(0)) {
+                        for (let k=0;k<hex2.tokenIDs[0].length;k++) {
+                            let element2 = new Element(hex2.tokenIDs[k]);
+                            group.push(element2.id);
+                        }
+                    } else if (hex2 && element.maps.includes(1)) {
+                        for (let k=0;k<hex2.tokenIDs[1].length;k++) {
                             let element2 = new Element(hex2.tokenIDs[k]);
                             group.push(element2.id);
                         }
