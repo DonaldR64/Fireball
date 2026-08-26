@@ -8,7 +8,7 @@ const Main = (() => {
 
     let HexSize, HexInfo, DIRECTIONS;
     let MapInfo = {};
-    let TeamArray = {};
+    let Elements = {};
     let SurnameList = {
         Germany: ["Schmidt","Schneider","Fischer","Weber","Meyer","Wagner","Becker","Schulz","Hoffmann","Bauer","Richter","Klein","Wolf","Schroder","Neumann","Schwarz","Braun","Hofmann","Werner","Krause","Konig","Lang","Vogel","Frank","Beck"],
         Soviet: ["Ivanov","Smirnov","Petrov","Sidorov","Popov","Vassiliev","Sokolov","Novikov","Volkov","Alekseev","Lebedev","Pavlov","Kozlov","Orlov","Makarov","Nikitin","Zaitsev","Golubev","Tarasov","Ilyin","Gusev","Titov","Kuzmin","Kiselyov","Belov"],
@@ -96,8 +96,6 @@ const Main = (() => {
             "fontColour": "#000000",
             "borderColour": "#FF0000",
             "borderStyle": "5px ridge",
-            "overwatch": "-N_aLWelhXtAj2-HmbhX",
-            "covering": "-N_aLMELJpCFCSdc38-r",
             "teammarkers": ["letters_and_numbers0099::4815235","letters_and_numbers0100::4815236","letters_and_numbers0101::4815237","letters_and_numbers0102::4815238","letters_and_numbers0103::4815239","letters_and_numbers0104::4815240","letters_and_numbers0105::4815241","letters_and_numbers0106::4815242","letters_and_numbers0107::4815243","letters_and_numbers0108::4815244"],       
         },
         "Germany": {
@@ -108,8 +106,6 @@ const Main = (() => {
             "fontColour": "#FFFFFF",
             "borderColour": "#000000",
             "borderStyle": "5px double",
-            "overwatch": "-N_aLRXvf68lFjYj5V3V",
-            "covering": "-N_aLD7-Jrij3WlVHaUl",
             "teammarkers": ["letters_and_numbers0197::4815333","letters_and_numbers0198::4815334","letters_and_numbers0199::4815335","letters_and_numbers0200::4815336","letters_and_numbers0201::4815337","letters_and_numbers0202::4815338","letters_and_numbers0203::4815339","letters_and_numbers0204::4815340","letters_and_numbers0205::4815341","letters_and_numbers0206::4815342"],   
         },
         "UK": {
@@ -120,8 +116,6 @@ const Main = (() => {
             "fontColour": "#FFFFFF",
             "borderColour": "#BC2D2F",
             "borderStyle": "5px groove",
-            "overwatch": "",
-            "covering": "",
             "teammarkers": ["letters_and_numbers0148::4815284","letters_and_numbers0149::4815285","letters_and_numbers0150::4815286","letters_and_numbers0151::4815287","letters_and_numbers0152::4815288","letters_and_numbers0153::4815289","letters_and_numbers0154::4815290","letters_and_numbers0155::4815291","letters_and_numbers0156::4815292","letters_and_numbers0157::4815293"],
         },
         "USA": {
@@ -132,8 +126,6 @@ const Main = (() => {
             "fontColour": "#006400",
             "borderColour": "#006400",
             "borderStyle": "5px double",
-            "overwatch": "",
-            "covering": "",
             "teammarkers": ["letters_and_numbers0050::4815186","letters_and_numbers0051::4815187","letters_and_numbers0052::4815188","letters_and_numbers0053::4815189","letters_and_numbers0054::4815190","letters_and_numbers0055::4815191","letters_and_numbers0056::4815192","letters_and_numbers0057::4815193","letters_and_numbers0058::4815194","letters_and_numbers0059::4815195"],
             "scouts": "-P-oD8_2dgCGY0wMiXQa",
         },
@@ -782,7 +774,7 @@ log(this.name)
 
             this.sectionID = state.FbF.sectionIDs[id] || "None";
                         
-            TeamArray[id] = this;
+            Elements[id] = this;
             let index = HexMap[label].tokenIDs.indexOf(id);
             if (index < 0) {
                 HexMap[label].tokenIDs.push(id);
@@ -862,14 +854,6 @@ log(this.name)
         } 
         AddAbility("Info","!TokenInfo",team.charID);
         AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",team.charID);
-
-        if (team.type === "Leader") {
-            AddAbility("Form Scouts","!FormScouts;@{selected|token_id};@{target|token_id}",team.charID);
-        }
-
-        if (team.isScout) {
-            AddAbility("Reform","!Reform;@{selected|token_id};@{target|token_id}",team.charID);
-        }
 
 
 
@@ -1143,9 +1127,8 @@ log(this.name)
     }
      
     const AddTokens = () => {
-        TeamArray = {};
-        SectionArray = {};
-        //create an array of all tokens
+        Elements = {};
+        //create an array of all tokens on both maps
         let start = Date.now();
         let tokens = findObjs({
             _pageid: Campaign().get("playerpageid"),
@@ -1153,8 +1136,26 @@ log(this.name)
             _subtype: "token",
             layer: "objects",
         });
+        let tokens2 = [];
+        if (page2ID) {
+            tokens2 = findObjs({
+                _pageid: page2ID,
+                _type: "graphic",
+                _subtype: "token",
+                layer: "objects",
+            });
+        }
+        let twinKeys = Object.keys(state.Twins.twins) || [];
+        let twinValues = Object.values[state.Twins.twins] || [];
+        for (let i=0;i<tokens2.length;i++) {
+            let token = tokens2[i];
+            if (twinKeys.includes(token.id) || twinValues.includes(token.id)) {
+                continue;
+            }
+            tokens.push(token);
+        }
 
-        let c = tokens.length;
+        let c = tokens.length + tokens2.length;
         let s = (c===1) ? '':'s';    
         
         tokens.forEach((token) => {
@@ -1165,7 +1166,7 @@ log(this.name)
         });
 
         let elapsed = Date.now()-start;
-        log(`${c} token${s} checked in ${elapsed/1000} seconds - ` + Object.keys(TeamArray).length + " placed in Team Array");
+        log(`${c} token${s} checked in ${elapsed/1000} seconds - ` + Object.keys(Elements).length + " placed in Team Array");
 
     }
 
@@ -1353,7 +1354,7 @@ log(this.name)
     const TokenInfo = (msg) => {
         let id = msg.selected[0]._id;
 log(id)
-        let team = TeamArray[id];
+        let team = Elements[id];
         if (!team) {
             sendChat("","Not in Array");
             return;
@@ -1394,7 +1395,7 @@ log(id)
             return;
         }
         if (id) {
-            team = TeamArray[id];
+            team = Elements[id];
             if (team) {
                 nation = team.nation;
                 player = team.player;
@@ -1429,7 +1430,7 @@ log(id)
         BuildMap();
 
         //clear arrays
-        TeamArray = {};
+        Elements = {};
         SectionArray = {};
 
         state.FbF = {
@@ -1478,8 +1479,8 @@ log(id)
 
     const CheckLOS = (msg) => {
         let Tag = msg.content.split(";");
-        let shooter = TeamArray[Tag[1]];
-        let target = TeamArray[Tag[2]];
+        let shooter = Elements[Tag[1]];
+        let target = Elements[Tag[2]];
 
         if (!shooter) {
             sendChat("","Not valid shooter");
@@ -1557,7 +1558,7 @@ log(id)
                 }
                 //Intervening Units
                 if (interHex.tokenIDs.length > 0 && interHex.label !== targetHex.label) {
-                    let team2 = TeamArray[interHex.tokenIDs[0]];
+                    let team2 = Elements[interHex.tokenIDs[0]];
                     if (team2 && blockers.includes(team2.type)) {
                         let h = .3
                         pt3 = new Point(i+1,0);
@@ -1711,14 +1712,14 @@ log(id)
             let group = groups[i];
             let sectionID = "None";
             let sectionMarker = "None";
-            let refTeam = TeamArray[group[0]];
+            let refTeam = Elements[group[0]];
             if (group.length > 1 && refTeam.player < 2) {
                 sectionID = stringGen();
                 sectionMarker = Nations[refTeam.nation].teammarkers[refTeam.player];
                 state.FbF.sectionMarkers[sectionID] = sectionMarker;
             };
             for (let j=0;j<group.length;j++) {
-                let team = TeamArray[group[j]];
+                let team = Elements[group[j]];
                 let name = team.charName.split(",")[0].trim();
                 if (team.type === "Leader") {
                     let index = randomInteger(Surnames[team.nation].length) - 1;
@@ -1778,14 +1779,14 @@ log(id)
     const FormScouts = (msg) => {
         let Tag = msg.content.split(";");
 //leader orders check and decrement
-        let leaderTeam = TeamArray[Tag[1]];
+        let leaderTeam = Elements[Tag[1]];
         let errorMsg = [];
 
         let orders = parseInt(leaderTeam.token.get("bar2_value"));
         if (orders === 0) {
             errorMsg.push("No Orders Left");
         }
-        let parentTeam = TeamArray[Tag[2]];
+        let parentTeam = Elements[Tag[2]];
         if (parentTeam.nation !== leaderTeam.nation) {
             errorMsg.push("Not Same Nation");
         }
@@ -1858,8 +1859,8 @@ log(id)
 
     const Reform = (msg) => {
         let Tag = msg.content.split(";")
-        let scoutTeam = TeamArray[Tag[1]];
-        let targetTeam = TeamArray[Tag[2]];
+        let scoutTeam = Elements[Tag[1]];
+        let targetTeam = Elements[Tag[2]];
         let errorMsg = [];
         SetupCard(scoutTeam.name,"Reform",scoutTeam.nation);
         if (scoutTeam.sectionID !== targetTeam.sectionID) {
@@ -1891,7 +1892,7 @@ log(id)
 
 
     const TwinTest = (msg) => {
-        let team = TeamArray[msg.selected[0]._id];
+        let team = Elements[msg.selected[0]._id];
         if (!team) {return};
 
         let token2 = summonToken(team.charID,HexMap[team.hexLabel].centre,{w: team.token.get("width"),h: team.token.get("height")},team.token.get("rotation"),"objects",page2ID);
@@ -1924,7 +1925,7 @@ log(id)
 
 
     const changeGraphic = (tok,prev) => {
-        let team = TeamArray[tok.id];
+        let team = Elements[tok.id];
         let newLabel = new Point(tok.get("left"),tok.get("top")).toCube().label();
         let prevLabel = new Point(prev.left,prev.top).toCube().label();
         if (team && newLabel !== prevLabel) {
@@ -1947,14 +1948,14 @@ log(id)
     const destroyGraphic = (obj) => {
         let id = obj.get("id");
         if (id) {
-            let team = TeamArray[id];
+            let team = Elements[id];
             if (team) {
                 log(team.name + " removed from Team Array")
                 let index = HexMap[team.hexLabel].tokenIDs.indexOf(id);
                 if (index > -1) {
                     HexMap[team.hexLabel].tokenIDs.splice(index,1);
                 }
-                delete TeamArray[id];
+                delete Elements[id];
 //section
             }
         }
@@ -1978,7 +1979,7 @@ log(id)
                 log("State");
                 log(state.FbF);
                 log("Team");
-                log(TeamArray)
+                log(Elements)
                 break;
             case '!ClearState':
                 ClearState(msg);
