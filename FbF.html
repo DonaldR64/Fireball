@@ -32,15 +32,24 @@
                 <option value="Neutral">Neutral</option>
             </select>
             <label>Individual Type:</label><input type="text" name="attr_individual">
-
-
-
+            <label for="attr_individual">Individual Type:</label>
+            <select name="attr_individual">
+                <option value="" selected disabled hidden>Choose here</option>
+                <option value="Leader">Leader</option>
+                <option value="Forward Observer">Forward Observer</option>
+                <option value="Sniper">Sniper</option>
+                <option value="UK">United Kingdom</option>
+                <option value="Neutral">Neutral</option>
+            </select>
+            <label>Recon Unit:</label><input type="checkbox" name="attr_recon" value="1">
         </div>
         <div class="col">
             <h3>Attributes</h3>
             <label>Morale:</label><input type="number" name="attr_morale">
             <label>Movement:</label><input type="number" name="attr_move">
             <label>Move or Fire:</label><input type="checkbox" name="attr_movefire" value="1">
+                    <label>Move or Fire:</label><input type="checkbox" name="attr_movefire" value="1">
+
             <h3>Vehicle Info</h3>
             <label>Leader?:</label><input type="checkbox" name="attr_armourLeader" value="1">
             <label>Front Armour:</label><input type="text" name="attr_armourF">
@@ -179,7 +188,7 @@
 
 
     on("change:armour change:type change:speed sheet:opened", function() {
-        getAttrs(["type","movefire","individual","nation","character_name"], function(values) {
+        getAttrs(["type","movefire","individual","nation","character_name","recon"], function(values) {
             let type = values.type;
             let line2 = type;
             if (type === "Individual") {
@@ -192,8 +201,11 @@
             let name2 = name[1].trim();
             
             let moveinfo = "";
-            if (movefire === "1") {
+            if (values.movefire === "1") {
                 moveinfo = "Move OR Fire";
+            }
+            if (values.recon === "1") {
+                moveinfo = "Recon Unit";
             }
 
 
