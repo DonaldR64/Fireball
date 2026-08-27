@@ -1747,11 +1747,11 @@ log(this.name)
                 }
 
 
-                let ds = element.type === "Leader" ? true:false;
+                let ds = element.type === "Individual" ? true:false;
                 element.token.set({
                     name: name,
                     aura1_color: "#00ff00",
-                    aura1_radius: 0.1,
+                    aura1_radius: 5,
                     aura2_color: "transparent",
                     showplayers_aura1: true,
                     tooltip: "",
@@ -1761,6 +1761,7 @@ log(this.name)
                     statusmarkers: "",
                     tint_color: "transparent",
                     disableSnapping: ds,
+                    disableTokenMenu: true,
                 })
                 element.name = name;
                 element.sectionID = sectionID;
