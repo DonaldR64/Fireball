@@ -107,6 +107,11 @@ const Main = (() => {
             "borderColour": "#000000",
             "borderStyle": "5px double",
             "elementmarkers": ["letters_and_numbers0197::4815333","letters_and_numbers0198::4815334","letters_and_numbers0199::4815335","letters_and_numbers0200::4815336","letters_and_numbers0201::4815337","letters_and_numbers0202::4815338","letters_and_numbers0203::4815339","letters_and_numbers0204::4815340","letters_and_numbers0205::4815341","letters_and_numbers0206::4815342"],   
+            "Battalion Leader": "Major ",
+            "Company Leader": "Hauptman ",
+            "Platoon Leader": "Lt. ",
+            "Forward Observer": "Lt. ",
+            "Sniper": "Pvt. "
         },
         "UK": {
             "image": "https://s3.amazonaws.com/files.d20.io/images/330506939/YtTgDTM3q7p8m0fJ4-E13A/thumb.png?1677713592",
@@ -127,7 +132,12 @@ const Main = (() => {
             "borderColour": "#006400",
             "borderStyle": "5px double",
             "elementmarkers": ["letters_and_numbers0050::4815186","letters_and_numbers0051::4815187","letters_and_numbers0052::4815188","letters_and_numbers0053::4815189","letters_and_numbers0054::4815190","letters_and_numbers0055::4815191","letters_and_numbers0056::4815192","letters_and_numbers0057::4815193","letters_and_numbers0058::4815194","letters_and_numbers0059::4815195"],
-            "scouts": "-P-oD8_2dgCGY0wMiXQa",
+            "Battalion Leader": "Lt.Col ",
+            "Company Leader": "Captain ",
+            "Platoon Leader": "Lt. ",
+            "Forward Observer": "Lt. ",
+            "Sniper": "Pvt. "
+
         },
 
 
@@ -676,7 +686,7 @@ const Main = (() => {
             let offset = point.toOffset();
             this.offset = offset;
             this.terrain = "Open";
-            this.tokenIDs = [[],[]];
+            this.tokenIDs = [];
             this.cube = offset.toCube();
             this.label = offset.label();
             this.elevation = 0;
@@ -739,7 +749,7 @@ const Main = (() => {
             this.player = player;
             this.token = token;
             this.type = aa.type;
-        
+            this.individual = aa.individual || "";
 
 
 
@@ -749,26 +759,14 @@ const Main = (() => {
 log(this.name)
 
             this.sectionID = state.FbF.sectionIDs[id] || "None";
-            let maps = [];
-            let index = HexMap[label].tokenIDs[0].indexOf(id);
+            let index = HexMap[label].tokenIDs.indexOf(id);
             if (index < 0) {
-                HexMap[label].tokenIDs[0].push(id);
-                maps.push(0);
+                HexMap[label].tokenIDs.push(id);
             }
-            index = HexMap[label].tokenIDs[1].indexOf(id);
-            if (index < 0) {
-                HexMap[label].tokenIDs[1].push(id);
-                maps.push(1);
-            }
-            this.maps = maps;
 
 
             Elements[id] = this;    
-        
-
-
-
-
+    
         }
 
         Offmap() {
@@ -1712,13 +1710,8 @@ log(this.name)
                 let neighbourCubes = hex.cube.neighbours();
                 _.each(neighbourCubes, cube => {
                     let hex2 = HexMap[cube.label()];
-                    if (hex2 && element.maps.includes(0)) {
-                        for (let k=0;k<hex2.tokenIDs[0].length;k++) {
-                            let element2 = new Element(hex2.tokenIDs[k]);
-                            group.push(element2.id);
-                        }
-                    } else if (hex2 && element.maps.includes(1)) {
-                        for (let k=0;k<hex2.tokenIDs[1].length;k++) {
+                    if (hex2) {
+                        for (let k=0;k<hex2.tokenIDs.length;k++) {
                             let element2 = new Element(hex2.tokenIDs[k]);
                             group.push(element2.id);
                         }
@@ -1727,27 +1720,33 @@ log(this.name)
             }
             groups.push(group);
         }
+log(groups)
+
         for (let i=0;i<groups.length;i++) {
             let group = groups[i];
+log("Group: " + group.length)
             let sectionID = "None";
-            let sectionMarker = "None";
+            let elementMarker = "None";
             let refElement = Elements[group[0]];
+log(refElement.name)
+log(refElement.player)
             if (group.length > 1 && refElement.player < 2) {
+log("Adding a Group")
                 sectionID = stringGen();
-                sectionMarker = Nations[refElement.nation].elementmarkers[refElement.player];
-                state.FbF.sectionMarkers[sectionID] = sectionMarker;
+                elementMarker = Nations[refElement.nation].elementmarkers[sectionMarkers[refElement.player]];
+                state.FbF.sectionMarkers[sectionID] = elementMarker;
             };
+log(elementMarker)
             for (let j=0;j<group.length;j++) {
                 let element = Elements[group[j]];
                 let name = element.charName.split(",")[0].trim();
-                if (element.type === "Leader") {
+                if (element.type === "Individual") {
+                    name = Nations[element.nation][element.individual];
                     let index = randomInteger(Surnames[element.nation].length) - 1;
                     let surname = Surnames[element.nation].splice(index,1);
                     name += " " + surname;
                 }
 
-
-                let ds = element.type === "Individual" ? true:false;
                 element.token.set({
                     name: name,
                     aura1_color: "#00ff00",
@@ -1760,18 +1759,18 @@ log(this.name)
                     showplayers_name: true,
                     statusmarkers: "",
                     tint_color: "transparent",
-                    disableSnapping: ds,
+                    disableSnapping: false,
                     disableTokenMenu: true,
                 })
                 element.name = name;
                 element.sectionID = sectionID;
-                if (sectionMarker !== "None") {
-                    element.token.set("status_" + sectionMarker,true);
+                if (elementMarker !== "None") {
+                    element.token.set("status_" + elementMarker,true);
                 }
                 state.FbF.sectionIDs[element.id] = sectionID;
                 AddAbilities(element);
             }
-            if (sectionMarker !== "None") {
+            if (elementMarker !== "None") {
                 sectionMarkers[refElement.player]++;
             }
         }
@@ -1846,15 +1845,10 @@ log(this.name)
         let prevLabel = new Point(prev.left,prev.top).toCube().label();
         if (element && newLabel !== prevLabel) {
             log(element.name + " moving")
-            let index = HexMap[prevLabel].tokenIDs[0].indexOf(tok.id);
+            let index = HexMap[prevLabel].tokenIDs.indexOf(tok.id);
             if (index > -1) {
-                HexMap[prevLabel].tokenIDs[0].splice(index,1);
-                HexMap[newLabel].tokenIDs[0].push(tok.id);
-            }
-            index = HexMap[prevLabel].tokenIDs[1].indexOf(tok.id);
-            if (index > -1) {
-                HexMap[prevLabel].tokenIDs[1].splice(index,1);
-                HexMap[newLabel].tokenIDs[1].push(tok.id);
+                HexMap[prevLabel].tokenIDs.splice(index,1);
+                HexMap[newLabel].tokenIDs.push(tok.id);
             }
             element.hexLabel = newLabel;
         } 
@@ -1872,13 +1866,9 @@ log(this.name)
             let element = Elements[id];
             if (element) {
                 log(element.name + " removed from Element Array")
-                let index = HexMap[hexLabel].tokenIDs[0].indexOf(id);
+                let index = HexMap[hexLabel].tokenIDs.indexOf(id);
                 if (index > -1) {
-                    HexMap[hexLabel].tokenIDs[0].splice(index,1);
-                }
-                index = HexMap[hexLabel].tokenIDs[1].indexOf(id);
-                if (index > -1) {
-                    HexMap[hexLabel].tokenIDs[1].splice(index,1);
+                    HexMap[hexLabel].tokenIDs.splice(index,1);
                 }
                 delete Elements[id];
             }
