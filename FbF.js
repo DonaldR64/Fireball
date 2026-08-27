@@ -1431,6 +1431,10 @@ log(this.name)
             players: {},
             nations: [],
             turn: 0,
+            currentPlayer: 2,
+            unitNumbers: [],
+            unitsLeftToActivate: [0,0];
+            deck: [26,26],
             losLines: [],
             sectionIDs: {}, //ref by elementID - shows the sectionID
             sectionMarkers: {}, //ref by sectionID - shows the marker
@@ -1472,7 +1476,72 @@ log(this.name)
         return;
     }
 
-   
+    const NextTurn = () => {
+        let turn = state.FbF.turn;
+        if (turn === 0) {
+            //start of game stuff
+
+
+        }
+        turn++;
+        state.FbF.currentPlayer = 2;
+        state.FbF.turn = turn;
+        state.FbF.unitsLeftToActivate = state.FbF.unitNumbers;
+        NextPhase();
+    }
+
+    const NextPhase = () => {
+        let currentPlayer = state.FbF.currentPlayer;
+        let deck = state.FbF.deck;
+        if (currentPlayer === 2) {
+            //1st phase of turn
+            let card = randomInteger(52);
+            currentPlayer = (card < 27) ? 0:1;
+        } else {
+            currentPlayer = (currentPlayer === 0) ? 1:0;
+        }
+        deck[currentPlayer]--;
+        let pulled = 1;
+        let nextCard;
+        do {
+            let roll = randomInteger(deck[0] + deck[1]);
+            if (roll <= deck[0]) {
+                pulled++;
+                nextCard = true;
+            } else {
+                nextCard = false;
+            }
+        } while (nextCard === true);
+        let nation = state.FbF.nations[currentPlayer];
+        let unitsLeftToActivate = state.FbF.unitsLeftToActivate[currentPlayer];
+        pulled = Math.min(pulled,unitsLeftToActivate);
+        let pulledDisplay = pulled;
+        if (pulled === unitsLeftToActivate) {
+            pulledDisplay = "All Remaining";
+        }
+        state.FbF.unitsLeftToActivate = (unitsLeftToActivate - pulled);
+        let s = (pulled === 1 || pulledDisplay === "All Remaining") ? "":"s";
+
+        SetupCard("Phase","",nation);
+        let line = "";
+        for (let i=0;i<pulled;i++) {
+            line += DisplayDice(6,nation,24);
+            if (i>0) {line += " "};
+        }
+        outputCard.body.push(line);
+        outputCard.body.push(nation + " Player may activate " + pulledDisplay + " Unit" + s);
+        PrintCard();
+
+
+
+
+    }
+
+
+
+
+
+
 
 
     const CheckLOS = (msg) => {
@@ -1690,7 +1759,7 @@ log(this.name)
         }
         let sectionMarkers = [0,0];
         let Surnames = DeepCopy(SurnameList);
-
+        let unitNumbers = [0,0];
         let groups = [];
         //sort tokens into groups
         tokenLoop:
@@ -1720,23 +1789,20 @@ log(this.name)
             }
             groups.push(group);
         }
-log(groups)
 
         for (let i=0;i<groups.length;i++) {
             let group = groups[i];
-log("Group: " + group.length)
             let sectionID = "None";
             let elementMarker = "None";
             let refElement = Elements[group[0]];
-log(refElement.name)
-log(refElement.player)
+            unitNumbers[refElement.player]++;
+
+
             if (group.length > 1 && refElement.player < 2) {
-log("Adding a Group")
                 sectionID = stringGen();
                 elementMarker = Nations[refElement.nation].elementmarkers[sectionMarkers[refElement.player]];
                 state.FbF.sectionMarkers[sectionID] = elementMarker;
             };
-log(elementMarker)
             for (let j=0;j<group.length;j++) {
                 let element = Elements[group[j]];
                 let name = element.charName.split(",")[0].trim();
@@ -1776,7 +1842,7 @@ log(elementMarker)
         }
 
         sendChat("","Armies Added")
-
+        state.FbF.unitNumbers = unitNumbers;
 
 
     }
@@ -1912,6 +1978,9 @@ log(elementMarker)
                 break;
             case '!TwinTest':
                 TwinTest(msg);
+                break;
+            case '!NextTurn':
+                NextTurn();
                 break;
 
 
