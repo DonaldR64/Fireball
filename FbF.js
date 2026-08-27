@@ -1433,7 +1433,7 @@ log(this.name)
             turn: 0,
             currentPlayer: 2,
             unitNumbers: [],
-            unitsLeftToActivate: [0,0];
+            unitsLeftToActivate: [0,0],
             deck: [26,26],
             losLines: [],
             sectionIDs: {}, //ref by elementID - shows the sectionID
@@ -1487,54 +1487,62 @@ log(this.name)
         state.FbF.currentPlayer = 2;
         state.FbF.turn = turn;
         state.FbF.unitsLeftToActivate = state.FbF.unitNumbers;
+        SetupCard("Turn " + turn,"","Neutral");
+        PrintCard();
         NextPhase();
     }
 
     const NextPhase = () => {
-        let currentPlayer = state.FbF.currentPlayer;
-        let deck = state.FbF.deck;
-        if (currentPlayer === 2) {
-            //1st phase of turn
-            let card = randomInteger(52);
-            currentPlayer = (card < 27) ? 0:1;
+        if (state.FbF.unitsLeftToActivate[0] === 0 && state.FbF.unitsLeftToActive[1] === 0) {
+            NextTurn();
         } else {
-            currentPlayer = (currentPlayer === 0) ? 1:0;
-        }
-        deck[currentPlayer]--;
-        let pulled = 1;
-        let nextCard;
-        do {
-            let roll = randomInteger(deck[0] + deck[1]);
-            if (roll <= deck[0]) {
-                pulled++;
-                nextCard = true;
+            let currentPlayer = state.FbF.currentPlayer;
+            let deck = state.FbF.deck;
+            if (currentPlayer === 2) {
+                //1st phase of turn
+                let card = randomInteger(52);
+                currentPlayer = (card < 27) ? 0:1;
             } else {
-                nextCard = false;
+                currentPlayer = (currentPlayer === 0) ? 1:0;
             }
-        } while (nextCard === true);
-        let nation = state.FbF.nations[currentPlayer];
-        let unitsLeftToActivate = state.FbF.unitsLeftToActivate[currentPlayer];
-        pulled = Math.min(pulled,unitsLeftToActivate);
-        let pulledDisplay = pulled;
-        if (pulled === unitsLeftToActivate) {
-            pulledDisplay = "All Remaining";
+            deck[currentPlayer]--;
+            let pulled = 1;
+            let nextCard;
+            do {
+                let roll = randomInteger(deck[0] + deck[1]);
+                if (roll <= deck[0]) {
+                    pulled++;
+                    nextCard = true;
+                } else {
+                    nextCard = false;
+                }
+            } while (nextCard === true);
+            let nation = state.FbF.nations[currentPlayer];
+            let otherPlayer = (currentPlayer === 0) ? 1:0;
+            let unitsLeftToActivate = state.FbF.unitsLeftToActivate[currentPlayer];
+            pulled = Math.min(pulled,unitsLeftToActivate);
+            let pulledDisplay = pulled;
+            let otherSide = state.FbF.unitsLeftToActivate[otherPlayer];
+            if (otherSide === 0) {pulled = unitsLeftToActivate};
+            if (pulled === unitsLeftToActivate) {
+                pulledDisplay = "All Remaining";
+            }
+            state.FbF.unitsLeftToActivate[currentPlayer] = (unitsLeftToActivate - pulled);
+            let s = (pulled === 1 || pulledDisplay === "All Remaining") ? "":"s";
+
+            SetupCard("Phase","",nation);
+            let line = "";
+            for (let i=0;i<pulled;i++) {
+                line += DisplayDice(6,nation,24);
+                if (i>0) {line += " "};
+            }
+            outputCard.body.push(line);
+            outputCard.body.push(nation + " Player may activate " + pulledDisplay + " Unit" + s);
+            if (pulledDisplay === "All Remaining" && otherSide === 0) {
+                outputCard.body.push("This will end the current Turn");
+            }
+            PrintCard();
         }
-        state.FbF.unitsLeftToActivate = (unitsLeftToActivate - pulled);
-        let s = (pulled === 1 || pulledDisplay === "All Remaining") ? "":"s";
-
-        SetupCard("Phase","",nation);
-        let line = "";
-        for (let i=0;i<pulled;i++) {
-            line += DisplayDice(6,nation,24);
-            if (i>0) {line += " "};
-        }
-        outputCard.body.push(line);
-        outputCard.body.push(nation + " Player may activate " + pulledDisplay + " Unit" + s);
-        PrintCard();
-
-
-
-
     }
 
 
@@ -1979,8 +1987,8 @@ log(this.name)
             case '!TwinTest':
                 TwinTest(msg);
                 break;
-            case '!NextTurn':
-                NextTurn();
+            case '!NextPhase':
+                NextPhase();
                 break;
 
 
