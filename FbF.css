@@ -178,11 +178,32 @@ section {
     padding: 3px;
 }
 
-.weapons {
+
+
+/* Weapon 1 */
+input[type="hidden"][value="Off"].weapon1-status ~ .weapon1{
+    display: none;
+}
+
+.weapon1 {
     display: grid;
     grid-gap: 1px;
     grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 2fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: 1fr;
+    text-align: center;
+    align-items: center;
+    padding: 3px;
+}
+/* Weapon 2 */
+input[type="hidden"][value="Off"].weapon2-status ~ .weapon2{
+    display: none;
+}
+
+.weapon2 {
+    display: grid;
+    grid-gap: 1px;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 2fr;
+    grid-template-rows: 1fr;
     text-align: center;
     align-items: center;
     padding: 3px;
