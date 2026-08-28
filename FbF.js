@@ -754,7 +754,7 @@ const Main = (() => {
             this.token = token;
             this.type = aa.type;
             this.individual = aa.individual || "";
-
+            this.morale = parseInt(aa.morale);
 
 
             let weaponArray = [];
@@ -785,6 +785,46 @@ log(this.name)
         Facing(b) {
 
         }
+
+        Morale(reason) {
+            let target = this.morale;
+            if (reason === "Rally") {target = 6};
+            let leader = this.Leader();
+            if (leader) {
+                target = leader.morale;
+            }
+            
+
+
+        }
+
+        Leader() {
+            //returns highest adjacent leader with rank > this
+            //if platoon leader only if is in same section/sectionID
+            let leader;
+            let leaderLevel=0;
+            let ranks = ["Other","Platoon Leader","Company Leader","Battalion Leader"];
+            let level = 0;
+            if (this.type === "Individual") {
+                level = ranks[this.individual] || 0;
+            }
+            _.each(Elements,element => {
+                if (element.nation === this.nation && element.type === "Individual" && element.id !== this.id) {
+                    let elLevel = ranks[element.individual] || 0;
+                    if (elLevel > level && (elLevel > 1 || (elLevel ===1 && element.sectionID === this.sectionID))) {
+                        let d = element.distance(this);
+                        if (d < 2) {
+                            if (leaderLevel < elLevel) {
+                                leader = element;
+                                leaderLevel = elLevel;
+                            }
+                        }
+                    }
+                }
+            })
+            return leader;
+        }
+
 
        
 
