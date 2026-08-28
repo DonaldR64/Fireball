@@ -793,6 +793,8 @@ log(this.name)
             if (leader) {
                 target = leader.morale;
             }
+            let status = this.Status();
+
             SetupCard(this.name,reason + " Check",this.nation);
 
             let rolls = [];
@@ -817,23 +819,80 @@ log(this.name)
                     outputCard.body.push(this.name + " fails to Rally");
                 } else {
                     outputCard.body.push(this.name + " Rallies");
-                    this.token.set({
-                        tint_color: "transparent",
-                        aura1_color: "#00ff00",
-                    })
+                    this.SetStatus("Good");
                 }
             } else if (reason === "Morale") {
-
-
-
-
-
+                if (fail === 0) {
+                    if (status === "Good") {
+                        outputCard.body.push(this.name + " is Suppressed");
+                        this.SetStatus("Suppressed");
+                    } else if (status === "Suppressed") {
+                        outputCard.body.push(this.name + " remains Suppressed");
+                    } else if (status === "Broken") {
+                        outputCard.body.push(this.name + " remains Broken and may make a Rout Move");
+                    }
+                } else if (fail === 1) {
+                    if (status === "Good" || status === "Suppressed") {
+                        outputCard.body.push(this.name + " is now Broken and may make a Rout Move");
+                        this.SetStatus("Broken");
+                    } else if (status === "Broken") {
+                        outputCard.body.push(this.name + " is Eliminated");
+                        this.SetStatus("Routed");
+                    }
+                } else if (fail > 1) {
+                    outputCard.body.push(this.name + " is Eliminated");
+                    this.SetStatus("Routed");
+                }
             }
             PrintCard();
 
 
 
         }
+
+        Status() {
+            let status = "Unknown"
+            let tint = this.token.get("tint_color");
+            if (tint === "transparent" || tint === "#000000") {
+                status = "Good";
+            }
+            if (tint === "#ffff00") {
+                status = "Suppressed";
+            }
+            if (tint === "#ff0000") {
+                status = "Broken";
+            }
+            return status;
+        }
+
+        SetStatus(status) {
+            if (status === "Good") {
+                this.token.set({
+                    tint_color: "transparent",
+                    aura1_color: "#00ff00",
+                })            
+            } else if (status === "Broken") {
+                this.token.set({
+                    tint_color: "#ff0000",
+                    aura1_color: "#ff0000",
+                })  
+            } else if (status === "Suppressed") {
+                this.token.set({
+                    tint_color: "#ffff00",
+                    aura1_color: "#ffff00",
+                })  
+            } else if (status === "Routed") {
+//destroy
+
+
+            }
+
+
+
+        }
+
+
+
 
         Leader() {
             //returns highest adjacent leader with rank > this
