@@ -89,6 +89,7 @@ const Main = (() => {
 
     const Nations = {
         "Soviet": {
+            "short": "Soviet",
             "image": "https://s3.amazonaws.com/files.d20.io/images/304547168/fMk9mH9WMsr8VSQFg6AZew/thumb.png?1663171370",
             "dice": "Soviet",
             "backgroundColour": "#FFFF00",
@@ -99,6 +100,7 @@ const Main = (() => {
             "elementmarkers": ["letters_and_numbers0099::4815235","letters_and_numbers0100::4815236","letters_and_numbers0101::4815237","letters_and_numbers0102::4815238","letters_and_numbers0103::4815239","letters_and_numbers0104::4815240","letters_and_numbers0105::4815241","letters_and_numbers0106::4815242","letters_and_numbers0107::4815243","letters_and_numbers0108::4815244"],       
         },
         "Germany": {
+            "short": "German",
             "image": "https://s3.amazonaws.com/files.d20.io/images/329415788/ypEgv2eFi-BKX3YK6q_uOQ/thumb.png?1677173028",
             "dice": "Germany",
             "backgroundColour": "#000000",
@@ -114,6 +116,7 @@ const Main = (() => {
             "Sniper": "Pvt. "
         },
         "UK": {
+            "short": "UK",
             "image": "https://s3.amazonaws.com/files.d20.io/images/330506939/YtTgDTM3q7p8m0fJ4-E13A/thumb.png?1677713592",
             "backgroundColour": "#0E2A7A",
             "dice": "UK",
@@ -124,6 +127,7 @@ const Main = (() => {
             "elementmarkers": ["letters_and_numbers0148::4815284","letters_and_numbers0149::4815285","letters_and_numbers0150::4815286","letters_and_numbers0151::4815287","letters_and_numbers0152::4815288","letters_and_numbers0153::4815289","letters_and_numbers0154::4815290","letters_and_numbers0155::4815291","letters_and_numbers0156::4815292","letters_and_numbers0157::4815293"],
         },
         "USA": {
+            "short": "US",
             "image": "https://s3.amazonaws.com/files.d20.io/images/327595663/Nwyhbv22KB4_xvwYEbL3PQ/thumb.png?1676165491",
             "backgroundColour": "#FFFFFF",
             "dice": "USA",
@@ -840,7 +844,7 @@ log(this.name)
         } 
         AddAbility("Info","!TokenInfo",element.charID);
         AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",element.charID);
-
+        AddAbility("Activate","!Activate",element.charID);
 
 
 
@@ -1412,6 +1416,19 @@ log(this.name)
         sendChat("player|" + playerID,res);
     }
 
+    const UnitNumbers = () => {
+        _.each(state.FbF.systemUnits, sysUnit => {
+            let el = Elements[sysUnit.id];
+            let hex = HexMap[sysUnit.startLoc];
+            el.token.set({
+                left: hex.centre.x,
+                top: hex.centre.y,
+            })
+            el.hexLabel = hex.label;
+        })
+    }
+
+
 
 
 
@@ -1420,7 +1437,6 @@ log(this.name)
         LoadPage();
 
         RemoveDead();
-
         BuildMap();
 
         //clear arrays
@@ -1436,10 +1452,11 @@ log(this.name)
             unitsLeftToActivate: [0,0],
             deck: [26,26],
             losLines: [],
+            systemUnits: [],           
             sectionIDs: {}, //ref by elementID - shows the sectionID
             sectionMarkers: {}, //ref by sectionID - shows the marker
+            elements: {}, //ref by sectionID, shows all elementIDs in the section
         }
-
         sendChat("","Cleared State/Arrays");
     }
 
@@ -1481,8 +1498,8 @@ log(this.name)
         if (turn === 0) {
             //start of game stuff
 
-
         }
+        UnitNumbers();
         turn++;
         state.FbF.currentPlayer = 2;
         state.FbF.turn = turn;
@@ -1542,14 +1559,14 @@ log(this.name)
             let s = (pulled > 1 || pulledDisplay === "All Unactivated") ? "s":"";
 
 
-            SetupCard("Phase","",nation);
+            SetupCard(Nations[nation].short + " Phase","",nation);
             let line = "";
             for (let i=0;i<pulled;i++) {
                 line += DisplayDice(6,nation,24);
                 if (i>0) {line += " "};
             }
             outputCard.body.push(line);
-            outputCard.body.push(nation + " Player may activate " + pulledDisplay + " Unit" + s);
+            outputCard.body.push(Nations[nation].short + " Player may activate " + pulledDisplay + " Unit" + s);
             if (pulledDisplay === "All Unactivated" && otherSide === 0) {
                 outputCard.body.push("This will end the current Turn");
             }
@@ -1557,7 +1574,38 @@ log(this.name)
         }
     }
 
+    const Activate = (msg) => {
+        let refElement = Elements[msg.selected[0]._id];
+        if (!refElement) {
+            sendChat("","Not in Array");
+            return;
+        }
+        let sectionID = element.sectionID;
+        let elementIDs = state.FbF.elements[sectionID];
+        _.each(elementIDs,elementID => {
+            let element = Elements[elementID];
+            let tint = element.token.get("tint_color");
+            let aura = element.token.get("aura1_color");
+            if (tint === "#ff0000") {
+                aura = "#ff0000"; //broken unit
+            } else {
+                aura = "#00ff00";
+            }
+            if (tint === "#ffff00") {
+                tint = "transparent"; //reset suppressed
+            }
+            element.token.set({
+                tint_color: tint,
+                aura1_color: aura,
+            })
+        })
 
+
+
+
+
+
+    }
 
 
 
@@ -1812,19 +1860,21 @@ log(this.name)
 
         for (let i=0;i<groups.length;i++) {
             let group = groups[i];
-            let sectionID = "None";
+            let sectionID = stringGen();
             let elementMarker = "None";
             let refElement = Elements[group[0]];
             unitNumbers[refElement.player]++;
 
 
             if (group.length > 1 && refElement.player < 2) {
-                sectionID = stringGen();
                 elementMarker = Nations[refElement.nation].elementmarkers[sectionMarkers[refElement.player]];
                 state.FbF.sectionMarkers[sectionID] = elementMarker;
             };
+
+            let elementIDs = [];
             for (let j=0;j<group.length;j++) {
                 let element = Elements[group[j]];
+                elementIDs.push(element.id);
                 let name = element.charName.split(",")[0].trim();
                 if (element.type === "Individual") {
                     name = Nations[element.nation][element.individual];
@@ -1832,10 +1882,13 @@ log(this.name)
                     let surname = Surnames[element.nation].splice(index,1);
                     name += " " + surname;
                 }
+                let a1c = (element.type === "System Unit") ? "":"#00ff00";
+                let tint = (element.type === "System Unit") ? "transparent":"#000000";
+
 
                 element.token.set({
                     name: name,
-                    aura1_color: "#00ff00",
+                    aura1_color: a1c,
                     aura1_radius: 5,
                     aura2_color: "transparent",
                     showplayers_aura1: true,
@@ -1844,7 +1897,7 @@ log(this.name)
                     showplayers_tooltip: true,
                     showplayers_name: true,
                     statusmarkers: "",
-                    tint_color: "transparent",
+                    tint_color: tint,
                     disableSnapping: false,
                     disableTokenMenu: true,
                 })
@@ -1853,12 +1906,24 @@ log(this.name)
                 if (elementMarker !== "None") {
                     element.token.set("status_" + elementMarker,true);
                 }
+
+
                 state.FbF.sectionIDs[element.id] = sectionID;
                 AddAbilities(element);
+
+                if (element.type === "System Unit") {
+                    let info = {
+                        id: element.id,
+                        startLoc: element.hexLabel,
+                    }
+                    state.FbF.systemUnits.push(info);
+                    DuplicateElement(element);
+                }
             }
             if (elementMarker !== "None") {
                 sectionMarkers[refElement.player]++;
             }
+            state.FbF.elements[sectionID] = elementIDs;
         }
 
         sendChat("","Armies Added")
@@ -1952,9 +2017,9 @@ log(this.name)
             let element = Elements[id];
             if (element) {
                 log(element.name + " removed from Element Array")
-                let index = HexMap[hexLabel].tokenIDs.indexOf(id);
+                let index = HexMap[element.hexLabel].tokenIDs.indexOf(id);
                 if (index > -1) {
-                    HexMap[hexLabel].tokenIDs.splice(index,1);
+                    HexMap[element.hexLabel].tokenIDs.splice(index,1);
                 }
                 delete Elements[id];
             }
@@ -2002,7 +2067,9 @@ log(this.name)
             case '!NextPhase':
                 NextPhase();
                 break;
-
+            case '!Activate':
+                Activate(msg);
+                break;
 
         }
     };
