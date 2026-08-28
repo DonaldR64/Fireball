@@ -1486,14 +1486,15 @@ log(this.name)
         turn++;
         state.FbF.currentPlayer = 2;
         state.FbF.turn = turn;
-        state.FbF.unitsLeftToActivate = state.FbF.unitNumbers;
+        state.FbF.unitsLeftToActivate = DeepCopy(state.FbF.unitNumbers);
         SetupCard("Turn " + turn,"","Neutral");
+//start of turn stuff
         PrintCard();
         NextPhase();
     }
 
     const NextPhase = () => {
-        if (state.FbF.unitsLeftToActivate[0] === 0 && state.FbF.unitsLeftToActive[1] === 0) {
+        if (state.FbF.unitsLeftToActivate[0] === 0 && state.FbF.unitsLeftToActivate[1] === 0) {
             NextTurn();
         } else {
             let currentPlayer = state.FbF.currentPlayer;
@@ -1505,13 +1506,19 @@ log(this.name)
             } else {
                 currentPlayer = (currentPlayer === 0) ? 1:0;
             }
+            state.FbF.currentPlayer = currentPlayer;
             deck[currentPlayer]--;
             let pulled = 1;
             let nextCard;
             do {
                 let roll = randomInteger(deck[0] + deck[1]);
-                if (roll <= deck[0]) {
+                if (currentPlayer === 0 && roll <= deck[0]) {
                     pulled++;
+                    deck[0]--;
+                    nextCard = true;
+                } else if (currentPlayer === 1 && roll > deck[0]) {
+                    pulled++;
+                    deck[1]--;
                     nextCard = true;
                 } else {
                     nextCard = false;
@@ -1525,10 +1532,15 @@ log(this.name)
             let otherSide = state.FbF.unitsLeftToActivate[otherPlayer];
             if (otherSide === 0) {pulled = unitsLeftToActivate};
             if (pulled === unitsLeftToActivate) {
-                pulledDisplay = "All Remaining";
+                pulledDisplay = "All Unactivated";
+                if (pulled === 1) {
+                    pulledDisplay === "Its Remaining";
+                }
             }
+            state.FbF.deck = deck;
             state.FbF.unitsLeftToActivate[currentPlayer] = (unitsLeftToActivate - pulled);
-            let s = (pulled === 1 || pulledDisplay === "All Remaining") ? "":"s";
+            let s = (pulled > 1 || pulledDisplay === "All Unactivated") ? "s":"";
+
 
             SetupCard("Phase","",nation);
             let line = "";
@@ -1538,7 +1550,7 @@ log(this.name)
             }
             outputCard.body.push(line);
             outputCard.body.push(nation + " Player may activate " + pulledDisplay + " Unit" + s);
-            if (pulledDisplay === "All Remaining" && otherSide === 0) {
+            if (pulledDisplay === "All Unactivated" && otherSide === 0) {
                 outputCard.body.push("This will end the current Turn");
             }
             PrintCard();
