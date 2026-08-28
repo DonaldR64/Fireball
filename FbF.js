@@ -786,14 +786,51 @@ log(this.name)
 
         }
 
-        Morale(reason) {
+        Morale(reason = "Morale",number = 1) {
             let target = this.morale;
             if (reason === "Rally") {target = 6};
             let leader = this.Leader();
             if (leader) {
                 target = leader.morale;
             }
-            
+            SetupCard(this.name,reason + " Check",this.nation);
+
+            let rolls = [];
+            let fail = 0;
+            let pass = 0;
+            for (let i=0;i<number;i++) {
+                let roll = randomInteger(6);
+                rolls.push(roll);
+                if (roll < target || roll === 1) {
+                    fail++;
+                } else {pass++};
+            }
+            rolls.sort().reverse();
+            let line = "";
+            _.each(rolls,roll => {
+                line += DisplayDice(roll,this.nation,24) + " ";
+            })
+            line += " vs. " + target + "+";
+
+            if (reason === "Rally") {
+                if (fail > 0) {
+                    outputCard.body.push(this.name + " fails to Rally");
+                } else {
+                    outputCard.body.push(this.name + " Rallies");
+                    this.token.set({
+                        tint_color: "transparent",
+                        aura1_color: "#00ff00",
+                    })
+                }
+            } else if (reason === "Morale") {
+
+
+
+
+
+            }
+            PrintCard();
+
 
 
         }
@@ -1554,6 +1591,7 @@ log(this.name)
         if (state.FbF.unitsLeftToActivate[0] === 0 && state.FbF.unitsLeftToActivate[1] === 0) {
             NextTurn();
         } else {
+//set the previous sections auras to black to indicate they've activated
             let currentPlayer = state.FbF.currentPlayer;
             let deck = state.FbF.deck;
             if (currentPlayer === 2) {
