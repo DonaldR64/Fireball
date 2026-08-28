@@ -798,8 +798,6 @@ log(this.name)
             }
             let status = this.Status();
 
-            SetupCard(this.name,reason + " Check",this.nation);
-
             let rolls = [];
             let fail = 0;
             let pass = 0;
@@ -847,9 +845,6 @@ log(this.name)
                     this.SetStatus("Routed");
                 }
             }
-            PrintCard();
-
-
 
         }
 
