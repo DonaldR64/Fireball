@@ -1723,19 +1723,21 @@ log(this.name)
             }
         })
 
-        let sectionID = element.sectionID;
+        let sectionID = refElement.sectionID;
         elementIDs = state.FbF.elements[sectionID];
+        let sectionName = refElement.name;
         _.each(elementIDs,elementID => {
             let element = Elements[elementID];
             if (element && element.token) {
-                let status = element.Status();
-                if (status === "Broken") {
-                    aura = "#ff0000"; //broken unit
-                } else {
-                    aura = "#00ff00";
+                if (element.type === "Individual" && element.individual.includes("Leader")) {
+                    sectionName = element.name;
                 }
-                if (status === "Suppressed") {
-                    tint = "transparent"; //reset suppressed
+                let status = element.Status();
+                let aura = "#00ff00";
+                let tint = (element.token.get("tint_color") === "#000000") ? "#000000":"transparent";
+                if (status === "Broken") {
+                    aura = "#ff0000";
+                    tint = "#ff0000";
                 }
                 element.token.set({
                     tint_color: tint,
@@ -1745,10 +1747,9 @@ log(this.name)
         })
 
         activeID = sectionID;
-
-
-
-
+        SetupCard("Activation","",refElement.nation);
+        outputCard.body.push(sectionName + "'s Unit is activated")
+        PrintCard();
     }
 
 
