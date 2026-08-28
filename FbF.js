@@ -9,6 +9,9 @@ const Main = (() => {
     let HexSize, HexInfo, DIRECTIONS;
     let MapInfo = {};
     let Elements = {};
+    let activeID; //sectionID that just activated
+
+
     let SurnameList = {
         Germany: ["Schmidt","Schneider","Fischer","Weber","Meyer","Wagner","Becker","Schulz","Hoffmann","Bauer","Richter","Klein","Wolf","Schroder","Neumann","Schwarz","Braun","Hofmann","Werner","Krause","Konig","Lang","Vogel","Frank","Beck"],
         Soviet: ["Ivanov","Smirnov","Petrov","Sidorov","Popov","Vassiliev","Sokolov","Novikov","Volkov","Alekseev","Lebedev","Pavlov","Kozlov","Orlov","Makarov","Nikitin","Zaitsev","Golubev","Tarasov","Ilyin","Gusev","Titov","Kuzmin","Kiselyov","Belov"],
@@ -1717,27 +1720,36 @@ log(this.name)
             sendChat("","Not in Array");
             return;
         }
-        let sectionID = element.sectionID;
-        let elementIDs = state.FbF.elements[sectionID];
+        let elementIDs = state.FbF.elements[activeID];
         _.each(elementIDs,elementID => {
             let element = Elements[elementID];
-            let tint = element.token.get("tint_color");
-            let aura = element.token.get("aura1_color");
-            if (tint === "#ff0000") {
-                aura = "#ff0000"; //broken unit
-            } else {
-                aura = "#00ff00";
+            if (element && element.token) {
+                element.token.set("aura1_color","#000000");
             }
-            if (tint === "#ffff00") {
-                tint = "transparent"; //reset suppressed
-            }
-            element.token.set({
-                tint_color: tint,
-                aura1_color: aura,
-            })
         })
 
+        let sectionID = element.sectionID;
+        elementIDs = state.FbF.elements[sectionID];
+        _.each(elementIDs,elementID => {
+            let element = Elements[elementID];
+            if (element && element.token) {
+                let status = element.Status();
+                if (status === "Broken") {
+                    aura = "#ff0000"; //broken unit
+                } else {
+                    aura = "#00ff00";
+                }
+                if (status === "Suppressed") {
+                    tint = "transparent"; //reset suppressed
+                }
+                element.token.set({
+                    tint_color: tint,
+                    aura1_color: aura,
+                })
+            }
+        })
 
+        activeID = sectionID;
 
 
 
