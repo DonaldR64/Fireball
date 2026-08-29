@@ -86,6 +86,7 @@ const Main = (() => {
     const Axis = ["Germany","Italy","Japan"];
     const Allies = ["Soviet","USA","UK","Canada"];
     const CharacterCountries = ["Soviet ","US ", "German ","UK "];
+    const Ranks = ["Other","Platoon Leader","Company Leader","Battalion Leader"];
 
 
     let outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
@@ -756,9 +757,19 @@ const Main = (() => {
             this.player = player;
             this.token = token;
             this.type = aa.type;
-            this.individual = aa.individual || "";
+            this.individual = aa.individual || " ";
             this.morale = parseInt(aa.morale);
-
+            this.recon = aa.recon === "1" ? true:false;
+            let leader = false;
+            if (this.type === "Individual" && this.individual.includes("Leader")) {
+                leader = true;
+            }
+            this.leader = leader;
+            let rank = 0;
+            if (this.leader === true) {
+                rank = Ranks.indexOf(this.individual);
+            }
+            this.rank = rank;
 
             let weaponArray = [];
 
@@ -791,7 +802,7 @@ log(this.name)
 
         Morale(reason = "Morale",number = 1) {
             let target = this.morale;
-            if (reason === "Rally") {target = 6};
+            if (reason === "Rally" && this.recon === false && this.leader === false) {target = 6};
             let leader = this.Leader();
             if (leader) {
                 target = leader.morale;
@@ -814,7 +825,7 @@ log(this.name)
                 line += DisplayDice(roll,this.nation,24) + " ";
             })
             line += " vs. " + target + "+";
-
+            outputCard.body.push(line);
             if (reason === "Rally") {
                 if (fail > 0) {
                     outputCard.body.push(this.name + " fails to Rally");
@@ -896,21 +907,18 @@ log(this.name)
             //returns highest adjacent leader with rank > this
             //if platoon leader only if is in same section/sectionID
             let leader;
-            let leaderLevel=0;
-            let ranks = ["Other","Platoon Leader","Company Leader","Battalion Leader"];
-            let level = 0;
-            if (this.type === "Individual") {
-                level = ranks[this.individual] || 0;
-            }
+            let leaderRank=0;
             _.each(Elements,element => {
-                if (element.nation === this.nation && element.type === "Individual" && element.id !== this.id) {
-                    let elLevel = ranks[element.individual] || 0;
-                    if (elLevel > level && (elLevel > 1 || (elLevel ===1 && element.sectionID === this.sectionID))) {
-                        let d = element.distance(this);
+log(element.name)
+log("Leader: " + element.leader)
+log("Rank: " + element.rank)
+                if (element.nation === this.nation && element.leader === true && element.id !== this.id && element.rank > this.rank) {
+                    if (element.rank > 1 || (element.rank === 1 && element.sectionID === this.sectionID)) {
+                        let d = element.Distance(this);
                         if (d < 2) {
-                            if (leaderLevel < elLevel) {
+                            if (leaderRank < element.rank) {
                                 leader = element;
-                                leaderLevel = elLevel;
+                                leaderRank = element.rank;
                             }
                         }
                     }
@@ -979,7 +987,7 @@ log(this.name)
         AddAbility("Info","!TokenInfo",element.charID);
         AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",element.charID);
         AddAbility("Activate","!Activate",element.charID);
-
+        AddAbility("Rally","!Rally",element.charID);
 
 
 
@@ -1497,6 +1505,10 @@ log(this.name)
         let label = element.hexLabel;
         let hex = HexMap[label];
         SetupCard(element.name,"Info",element.nation);
+        let status = element.Status();
+        outputCard.body.push("Status: " + status);
+
+        outputCard.body.push("[hr]");
         outputCard.body.push("Hex Label: " + label);
         if (element.Offmap()) {
             outputCard.body.push("Element is Off Map");
@@ -2121,7 +2133,42 @@ log(this.name)
 
     }
 
-
+    const Rally = (msg) => {
+        let element = Elements[msg.selected[0]._id];
+        if (element.leader === true && element.Status() === "Good") {
+            SetupCard(element.name,"Rally",element.nation);
+            //leader in good order can rally all adjacent units in command structure
+            if (element.rank === 1) {
+                _.each(state.FbF.elements[element.sectionID],id2 => {
+                    let element2 = Elements[id2];
+                    if (element2.id !== element.id && element2.Status() === "Broken") {
+                        let d = element2.Distance(element);
+                        if (d < 2) {
+                            outputCard.body.push("[U]" + element2.name + "[/u]")
+                            element2.Morale("Rally");
+                            outputCard.body.push("[hr]");
+                        }
+                    }
+                })
+            } else {
+                //co or bat leaders
+                _.each(Elements,element2 => {
+                    if (element2.nation === element.nation && element2.id !== element.id && element2.Status() === "Broken") {
+                        let d = element2.Distance(element);
+                        if (d < 2) {
+                            outputCard.body.push("[U]" + element2.name + "[/u]")
+                            element2.Morale("Rally");
+                            outputCard.body.push("[hr]");
+                        }
+                    }
+                })
+            }
+        } else {
+            SetupCard(element.name,"Rally",element.nation);
+            element.Morale("Rally");
+        }
+        PrintCard();
+    }
 
 
 
@@ -2215,6 +2262,10 @@ log(this.name)
             case '!Activate':
                 Activate(msg);
                 break;
+            case '!Rally':
+                Rally(msg);
+                break;
+            
 
         }
     };
