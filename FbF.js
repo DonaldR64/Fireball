@@ -2152,12 +2152,11 @@ log(keys)
             let sectionID = stringGen();
             let elementMarker = "None";
             let refElement = Elements[group[0]];
-            unitNumbers[refElement.player]++;
-
 
             if (refElement.player < 2 && refElement.type !== "Initiative Token" && refElement.type !== "Marker") {
                 elementMarker = Nations[refElement.nation].elementmarkers[sectionMarkers[refElement.player]];
                 state.FbF.sectionMarkers[sectionID] = elementMarker;
+                unitNumbers[refElement.player]++;
             };
 
             let elementIDs = [];
