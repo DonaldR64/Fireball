@@ -1003,14 +1003,66 @@ log("Rank: " + element.rank)
             AddAbility("Activate Unit","!Activate;@{selected|token_id}",element.charID);
             AddAbility("Rally","!Rally",element.charID);
         } else if (element.type === "Initiative Token") {
-            AddAbility("Restore Ammo to Unit","!RestoreAmmo;@{target|token_id}",element.charID);
+            AddAbility("Restore Ammo to Unit","!RestoreAmmo;@{target|token_id};Intiative",element.charID);
             AddAbility("Free Activation for Unit","!Activate;@{target|token_id};Initiative",element.charID);
+        }
+        let coreTypes = ["Infantry Squad","Infantry Team","Weapons Team","Crewed Weapon","Vehicle","Soft Vehicle"];
+        if (coreTypes.includes(element.type)) {
+            //fire
+        }
+        if (element.type === "Weapons Team" || element.type === "Vehicle" || element.type === "Soft Vehicle") {
+            //reload ammo
+            AddAbility("Reload/Fix Jam","!RestoreAmmo;@{selected|token_id}",element.charID);
         }
 
 
 
 
 
+
+
+
+
+    }
+
+    const RestoreAmmo = (msg) => {
+        let Tag = msg.content.split(";");
+        let id = Tag[1];
+        let refElement = Elements[id];
+        let initiative = (Tag[2] === "Initiative") ? true:false;
+        SetupCard("Reload/Unjam","",refElement.nation);
+        if (initiative === false) {
+            if (refElement.rallied === true || refElement.moved === true || refElement.fired === true) {
+                outputCard.body.push("Element has done other Actions");
+                PrintCard();
+                return;
+            }
+            if (randomInteger(6) > 4) {
+                outputCard.body.push("Success!");
+                outputCard.body.push(refElement.name + " has reloaded/fixed the weapon jam");
+                refElement.token.set(SM.ammo,false);
+            } else {
+                outputCard.body.push("[#ff0000]Failure![/#]");
+                outputCard.body.push(refElement.name + " remains Out of Ammo or Jammed"); 
+            }
+            outputCard.body.push("[hr]");
+            outputCard.body.push(refElement.name + "'s Activation is done");
+        } else {
+            let sectionID = refElement.sectionID;
+            let elementIDs = state.FbF.elements[sectionID];
+            let sectionName = refElement.name;
+            _.each(elementIDs,elementID => {
+                let element = Elements[elementID];
+                if (element && element.token) {
+                    if (element.type === "Individual" && element.individual.includes("Leader")) {
+                        sectionName = element.name;
+                    }
+                    element.token.set(SM.ammo,false);
+                }
+            })
+            outputCard.body.push("All elements in " + sectionName + "'s Unit reload and fix any weapon jams");
+        }
+        PrintCard();
     }
 
 
@@ -1775,6 +1827,9 @@ log("Rank: " + element.rank)
             if (element && element.token) {
                 element.token.set("aura1_color","#000000");
             }
+            element.moved = false;
+            element.fired = false;
+            element.rallied = false;
         })
 
 
@@ -2212,8 +2267,13 @@ log(keys)
 
     const Rally = (msg) => {
         let element = Elements[msg.selected[0]._id];
-        if (element.leader === true && element.Status() === "Good") {
-            SetupCard(element.name,"Rally",element.nation);
+        SetupCard(element.name,"Rally",element.nation);
+        if (element.rallied === true) {
+            outputCard.body.push("Element already Rallied");
+            PrintCard();
+            return;
+        }
+        if (element.leader === true && element.Status() === "Good") {            
             //leader in good order can rally all adjacent units in command structure
             if (element.rank === 1) {
                 _.each(state.FbF.elements[element.sectionID],id2 => {
@@ -2244,6 +2304,7 @@ log(keys)
             SetupCard(element.name,"Rally",element.nation);
             element.Morale("Rally");
         }
+        element.rallied = true;
         LastElement(element);
         PrintCard();
     }
@@ -2281,6 +2342,7 @@ log(keys)
             }
             element.hexLabel = newLabel;
             LastElement(element);
+            element.moved = true;
         } 
         if (element && tok.get("rotation") !== prev.rotation) {
             log(element.name + " turning")

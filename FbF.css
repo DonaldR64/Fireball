@@ -171,7 +171,7 @@ section {
 .weaponinfo {
     display: grid;
     grid-gap: 1px;
-    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 2fr;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
     grid-template-rows: 1fr;
     text-align: center;
     align-items: center;
@@ -188,7 +188,7 @@ input[type="hidden"][value="Off"].weapon1-status ~ .weapon1{
 .weapon1 {
     display: grid;
     grid-gap: 1px;
-    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 2fr;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
     grid-template-rows: 1fr;
     text-align: center;
     align-items: center;
@@ -202,7 +202,7 @@ input[type="hidden"][value="Off"].weapon2-status ~ .weapon2{
 .weapon2 {
     display: grid;
     grid-gap: 1px;
-    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 2fr;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
     grid-template-rows: 1fr;
     text-align: center;
     align-items: center;
