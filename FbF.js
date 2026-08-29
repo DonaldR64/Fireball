@@ -2012,6 +2012,9 @@ log("Rank: " + element.rank)
         let groups = [];
         //sort tokens into groups
         tokenLoop:
+
+
+        
         for (let i=0;i<tokens.length;i++) {
             let token = tokens[i];
             let character = getObj("character", token.get("represents"));   
