@@ -9,8 +9,8 @@ const Main = (() => {
     let HexSize, HexInfo, DIRECTIONS;
     let MapInfo = {};
     let Elements = {};
-    let activeID; //sectionID that just activated
-
+    let activeSectionID; //sectionID that just activated
+    let activeElementID; //last element that activated
 
     let SurnameList = {
         Germany: ["Schmidt","Schneider","Fischer","Weber","Meyer","Wagner","Becker","Schulz","Hoffmann","Bauer","Richter","Klein","Wolf","Schroder","Neumann","Schwarz","Braun","Hofmann","Werner","Krause","Konig","Lang","Vogel","Frank","Beck"],
@@ -775,7 +775,7 @@ const Main = (() => {
 
 
 log(this.name)
-
+log(this.type)
             this.sectionID = state.FbF.sectionIDs[id] || "None";
             let index = HexMap[label].tokenIDs.indexOf(id);
             if (index < 0) {
@@ -876,8 +876,12 @@ log(this.name)
 
         SetStatus(status) {
             if (status === "Good") {
+                let tc = this.token.get("tint_color");
+                if (tc === "#ffff00" || tc === "#ff0000") {
+                    tc = "transparent";
+                }
                 this.token.set({
-                    tint_color: "transparent",
+                    tint_color: tc,
                     aura1_color: "#00ff00",
                 })            
             } else if (status === "Broken") {
@@ -894,6 +898,14 @@ log(this.name)
 //destroy
 
 
+            } else if (status === "Activated") {
+                this.token.set({
+                    aura1_color: "#000000",
+                })
+            } else if (status === "Active") {
+                this.token.set({
+                    aura1_color: "#ffffff",
+                })
             }
 
 
@@ -1563,9 +1575,9 @@ log("Rank: " + element.rank)
     }
 
     const UnitNumbers = () => {
-        _.each(state.FbF.systemUnits, sysUnit => {
-            let el = Elements[sysUnit.id];
-            let hex = HexMap[sysUnit.startLoc];
+        _.each(state.FbF.markers, marker => {
+            let el = Elements[marker.id];
+            let hex = HexMap[marker.startLoc];
             el.token.set({
                 left: hex.centre.x,
                 top: hex.centre.y,
@@ -1598,7 +1610,7 @@ log("Rank: " + element.rank)
             unitsLeftToActivate: [0,0],
             deck: [26,26],
             losLines: [],
-            systemUnits: [],           
+            markers: [],           
             sectionIDs: {}, //ref by elementID - shows the sectionID
             sectionMarkers: {}, //ref by sectionID - shows the marker
             elements: {}, //ref by sectionID, shows all elementIDs in the section
@@ -1651,6 +1663,13 @@ log("Rank: " + element.rank)
         state.FbF.turn = turn;
         state.FbF.unitsLeftToActivate = DeepCopy(state.FbF.unitNumbers);
         SetupCard("Turn " + turn,"","Neutral");
+        _.each(Elements,element => {
+            if (element.Status() !== "Broken") {
+                element.SetStatus("Good");
+            }
+        })
+
+
 //start of turn stuff
         PrintCard();
         NextPhase();
@@ -1727,7 +1746,12 @@ log("Rank: " + element.rank)
             sendChat("","Not in Array");
             return;
         }
-        let elementIDs = state.FbF.elements[activeID];
+        if (refElement.sectionID === activeSectionID) {
+            sendChat("","Is Currently Activated");
+            return;
+        }
+
+        let elementIDs = state.FbF.elements[activeSectionID];
         _.each(elementIDs,elementID => {
             let element = Elements[elementID];
             if (element && element.token) {
@@ -1745,7 +1769,7 @@ log("Rank: " + element.rank)
                     sectionName = element.name;
                 }
                 let status = element.Status();
-                let aura = "#00ff00";
+                let aura = "#ffffff";
                 let tint = (element.token.get("tint_color") === "#000000") ? "#000000":"transparent";
                 if (status === "Broken") {
                     aura = "#ff0000";
@@ -1758,7 +1782,7 @@ log("Rank: " + element.rank)
             }
         })
 
-        activeID = sectionID;
+        activeSectionID = sectionID;
         SetupCard("Activation","",refElement.nation);
         outputCard.body.push(sectionName + "'s Unit is activated")
         PrintCard();
@@ -2039,8 +2063,8 @@ log("Rank: " + element.rank)
                     let surname = Surnames[element.nation].splice(index,1);
                     name += " " + surname;
                 }
-                let a1c = (element.type === "System Unit") ? "":"#00ff00";
-                let tint = (element.type === "System Unit") ? "transparent":"#000000";
+                let a1c = (element.type === "Marker") ? "":"#00ff00";
+                let tint = (element.type === "Marker") ? "transparent":"#000000";
 
 
                 element.token.set({
@@ -2068,12 +2092,12 @@ log("Rank: " + element.rank)
                 state.FbF.sectionIDs[element.id] = sectionID;
                 AddAbilities(element);
 
-                if (element.type === "System Unit") {
+                if (element.type === "Marker") {
                     let info = {
                         id: element.id,
                         startLoc: element.hexLabel,
                     }
-                    state.FbF.systemUnits.push(info);
+                    state.FbF.markers.push(info);
                     DuplicateElement(element);
                 }
             }
@@ -2167,12 +2191,21 @@ log("Rank: " + element.rank)
             SetupCard(element.name,"Rally",element.nation);
             element.Morale("Rally");
         }
+        LastElement(element);
         PrintCard();
     }
 
 
 
-
+    const LastElement = (element) => {
+        if (element.sectionID === activeSectionID && state.FbF.turn > 0) {
+            let lastElement = Elements[activeElementID];
+            if (lastElement && lastElement !== activeElementID) {
+                lastElement.SetStatus("Activated");
+            }
+            activeElementID = element.id;
+        }
+    }
 
 
 
@@ -2194,6 +2227,7 @@ log("Rank: " + element.rank)
                 HexMap[newLabel].tokenIDs.push(tok.id);
             }
             element.hexLabel = newLabel;
+            LastElement(element);
         } 
         if (element && tok.get("rotation") !== prev.rotation) {
             log(element.name + " turning")
