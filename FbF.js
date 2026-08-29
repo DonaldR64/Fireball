@@ -996,10 +996,17 @@ log("Rank: " + element.rank)
         for(let a=0;a<abilArray.length;a++) {
             abilArray[a].remove();
         } 
-        AddAbility("Info","!TokenInfo",element.charID);
-        AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",element.charID);
-        AddAbility("Activate","!Activate",element.charID);
-        AddAbility("Rally","!Rally",element.charID);
+
+        if (element.type !== "Initiative Token" && element.type !== "Marker") {
+            AddAbility("Info","!TokenInfo",element.charID);
+            AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",element.charID);
+            AddAbility("Activate Unit","!Activate;@{selected|token_id}",element.charID);
+            AddAbility("Rally","!Rally",element.charID);
+        } else if (element.type === "Initiative Token") {
+            AddAbility("Restore Ammo to Unit","!RestoreAmmo;@{target|token_id}",element.charID);
+            AddAbility("Free Activation for Unit","!Activate;@{target|token_id};Initiative",element.charID);
+        }
+
 
 
 
@@ -1741,7 +1748,10 @@ log("Rank: " + element.rank)
     }
 
     const Activate = (msg) => {
-        let refElement = Elements[msg.selected[0]._id];
+        let Tag = msg.content.split(";");
+        let id = Tag[1];
+        let initiative = Tag[2] === "Initiative" ? true:false;
+        let refElement = Elements[id];
         if (!refElement) {
             sendChat("","Not in Array");
             return;
@@ -1750,6 +1760,14 @@ log("Rank: " + element.rank)
             sendChat("","Is Currently Activated");
             return;
         }
+        if (refElement.token.get("aura1_color") === "#000000" && initiative === false) {
+            sendChat("","Unit has already Activated this turn");
+            sendChat("","An Initiative Chip could be used");
+            return;
+        }
+
+
+
 
         let elementIDs = state.FbF.elements[activeSectionID];
         _.each(elementIDs,elementID => {
@@ -1758,6 +1776,9 @@ log("Rank: " + element.rank)
                 element.token.set("aura1_color","#000000");
             }
         })
+
+
+
 
         let sectionID = refElement.sectionID;
         elementIDs = state.FbF.elements[sectionID];
@@ -1785,6 +1806,9 @@ log("Rank: " + element.rank)
         activeSectionID = sectionID;
         SetupCard("Activation","",refElement.nation);
         outputCard.body.push(sectionName + "'s Unit is activated")
+        if (initiative === true) {
+            outputCard.body.push("An Initiative Token was Used");
+        }
         PrintCard();
     }
 
@@ -1980,6 +2004,55 @@ log("Rank: " + element.rank)
         return true;
     }
 
+
+    const AdjacentTokens = () => {
+
+        const visited = [];
+        const groups = [];
+        const keys = Object.keys(Elements);
+log("Keys")
+log(keys)
+
+        // 1. Helper to find neighbours
+        const getneighbours = (current) => {
+            let neighbours = [];
+            for (let i=0;i<keys.length;i++) {
+                let key = keys[i];
+                if (key === current) {continue};
+                let d = Elements[key].Distance(Elements[current]);
+                if (d < 2) {
+                    neighbours.push(key);
+                }
+            }
+            return neighbours;
+        };
+
+        // 2. Traverse the map to find connected clusters
+        for (const key of keys) {
+            if (visited.includes(key)) continue;
+            const group = [];
+            const queue = [key];
+            visited.push(key);
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+                group.push(current);
+                for (const neighbour of getneighbours(current)) {
+                    if (visited.includes(neighbour) === false) {
+                        visited.push(neighbour);
+                        queue.push(neighbour);
+                    }
+                }
+            }
+
+            groups.push(group);
+        }
+
+        return groups; //will be groups of keys / ids
+    }
+
+
+
     const SetArmies = () => {
         Elements = {};
         let tokens = findObjs({
@@ -2009,38 +2082,15 @@ log("Rank: " + element.rank)
         let sectionMarkers = [0,0];
         let Surnames = DeepCopy(SurnameList);
         let unitNumbers = [0,0];
-        let groups = [];
-        //sort tokens into groups
-        tokenLoop:
 
-
-        
         for (let i=0;i<tokens.length;i++) {
             let token = tokens[i];
             let character = getObj("character", token.get("represents"));   
             if (!character) {continue};
             let element = new Element(token.get("id"));
-            for (let j=0;j<groups.length;j++) {
-                if (groups[j].includes(element.id)) {
-                    continue tokenLoop;
-                }
-            }
-            let group = [element.id];
-            if (element.player < 2) {
-                let hex = HexMap[element.hexLabel];
-                let neighbourCubes = hex.cube.neighbours();
-                _.each(neighbourCubes, cube => {
-                    let hex2 = HexMap[cube.label()];
-                    if (hex2) {
-                        for (let k=0;k<hex2.tokenIDs.length;k++) {
-                            let element2 = new Element(hex2.tokenIDs[k]);
-                            group.push(element2.id);
-                        }
-                    }
-                })
-            }
-            groups.push(group);
         }
+
+        let groups = AdjacentTokens();
 
         for (let i=0;i<groups.length;i++) {
             let group = groups[i];
@@ -2050,7 +2100,7 @@ log("Rank: " + element.rank)
             unitNumbers[refElement.player]++;
 
 
-            if (group.length > 1 && refElement.player < 2) {
+            if (refElement.player < 2 && refElement.type !== "Initiative Token" && refElement.type !== "Marker") {
                 elementMarker = Nations[refElement.nation].elementmarkers[sectionMarkers[refElement.player]];
                 state.FbF.sectionMarkers[sectionID] = elementMarker;
             };
@@ -2066,8 +2116,8 @@ log("Rank: " + element.rank)
                     let surname = Surnames[element.nation].splice(index,1);
                     name += " " + surname;
                 }
-                let a1c = (element.type === "Marker") ? "":"#00ff00";
-                let tint = (element.type === "Marker") ? "transparent":"#000000";
+                let a1c = (element.type === "Marker" || element.type === "Initiative Token") ? "":"#00ff00";
+                let tint = (element.type === "Marker" || element.type === "Initiative Token") ? "transparent":"#000000";
 
 
                 element.token.set({

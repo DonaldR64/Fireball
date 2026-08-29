@@ -35,8 +35,9 @@ const groupAndSortAdjacent = () => {
         }
       }
     }
+
+    groups.push(group);
   }
 
-  // 4. Sort the final groups by their starting element
   return groups; //will be groups of keys / ids
 }
