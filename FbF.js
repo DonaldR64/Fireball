@@ -773,6 +773,34 @@ const Main = (() => {
             this.rank = rank;
 
             let weaponArray = [];
+            for (let w=1;w<3;w++) {
+                let pre = "weapon" + w;
+                let wequipped = aa[pre + "equipped"];
+                if (wequipped !== "Equipped") {continue};
+                let wname = aa[pre + "name"];
+                let weff = aa[pre + "eff"];
+                weff = weff.split("-").map(e => parseInt(e));
+                if (weff.length === 1) {
+                    weff.unshift(0);
+                }
+                let wrangeddice = aa[pre + "rangeddice"];
+                let wpen = parseInt(aa[pre + "pen"]) || "-";
+                let wai = aa[pre + "ai"];
+                wai = wai.split("/").map(e => parseInt(e));
+                let wnotes = aa[pre + "notes"];
+                let weapon = {
+                    name: wname,
+                    effRange: weff, //an array of min/max
+                    rangedDice: wrangeddice,
+                    penetration: wpen,
+                    antiInfantry: wai, //an array, white then red
+                    notes: wnotes,
+                }
+log(weapon)
+                weaponArray.push(weapon);
+            }
+
+
 
 
 
@@ -1007,6 +1035,7 @@ log("Rank: " + element.rank)
             abilArray[a].remove();
         } 
 
+
         if (element.type !== "Initiative Token" && element.type !== "Marker") {
             AddAbility("Info","!TokenInfo",element.charID);
             AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",element.charID);
@@ -1015,9 +1044,12 @@ log("Rank: " + element.rank)
         if (element.type === "Initiative Token") {
             AddAbility("Restore Ammo to Unit","!RestoreAmmo;@{target|token_id};Intiative",element.charID);
             AddAbility("Free Activation for Unit","!Activate;@{target|token_id};Initiative",element.charID);
+            return;
         }
 
-        let actions = ["Rally"]
+
+        let actions = ["Rally"];
+
         if (element.weaponArray.length > 0) {
             actions.push("Fire");
         }
@@ -1039,11 +1071,14 @@ log("Rank: " + element.rank)
         }
 
         actions = actions.sort();
-        actions = actions.toString().replace(",","|");
+log(element.name)
+log(actions)
+
+        actions = actions.toString().replaceAll(",","|");
 
         let ability = "!Action;?{Action|" + actions + "}";
 
-
+    
 
         AddAbility("Action",ability,element.charID);
 
