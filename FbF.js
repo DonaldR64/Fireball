@@ -760,6 +760,7 @@ const Main = (() => {
             this.individual = aa.individual || " ";
             this.morale = parseInt(aa.morale);
             this.recon = aa.recon === "1" ? true:false;
+            this.move = parseInt(aa.move) || 0;
             let leader = false;
             if (this.type === "Individual" && this.individual.includes("Leader")) {
                 leader = true;
@@ -1009,26 +1010,42 @@ log("Rank: " + element.rank)
         if (element.type !== "Initiative Token" && element.type !== "Marker") {
             AddAbility("Info","!TokenInfo",element.charID);
             AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",element.charID);
-            AddAbility("Activate Unit","!Activate;@{selected|token_id}",element.charID);
-            AddAbility("Rally","!Rally",element.charID);
-        } else if (element.type === "Initiative Token") {
+        }
+
+        if (element.type === "Initiative Token") {
             AddAbility("Restore Ammo to Unit","!RestoreAmmo;@{target|token_id};Intiative",element.charID);
             AddAbility("Free Activation for Unit","!Activate;@{target|token_id};Initiative",element.charID);
         }
+
+        let actions = ["Rally"]
         if (element.weaponArray.length > 0) {
-//2 weapons ?
-            AddAbility("Fire","!Fire;@{selected|token_id};@{target|token_id}");
+            actions.push("Fire");
         }
+        if (element.move > 0) {
+            actions.push("Move");
+        }
+
         if (element.type === "Weapons Team" || element.type === "Vehicle" || element.type === "Soft Vehicle") {
-            //reload ammo
-            AddAbility("Reload/Fix Jam","!RestoreAmmo;@{selected|token_id}",element.charID);
+            actions.push("Reload");
         }
         if (element.recon === true || element.leader === true) {
-            AddAbility("Spot","!Spot",element.charID);
+            actions.push("Spot");
         }
         if ((element.leader === true && element.rank > 1) || element.individual === "Forward Observer") {
-            AddAbility("Call Artillery","!CallArtillery",element.charID);
+            actions.push("Call Artillery");
         }
+        if (element.type.includes("Squad") || element.type === "Infantry Team" || element.rank > 0) {
+            actions.push("Charge");
+        }
+
+        actions = actions.sort();
+        actions = actions.toString().replace(",","|");
+
+        let ability = "!Action;?{Action|" + actions + "}";
+
+
+
+        AddAbility("Action",ability,element.charID);
 
 
 
@@ -1825,7 +1842,6 @@ log("Rank: " + element.rank)
         SetupCard(element.name,"Spot",element.nation);
         if (element.spotted === false) {
             let roll = randomInteger(6);
-roll = 6
             let revealed = false
             if (roll > 4) {
                 let enemies = SpotFunction(element,"closest");
