@@ -761,6 +761,9 @@ const Main = (() => {
             this.morale = parseInt(aa.morale);
             this.recon = aa.recon === "1" ? true:false;
             this.move = parseInt(aa.move) || 0;
+            this.moveOrFire = (aa.movefire === "1") ? true:false;
+
+
             let leader = false;
             if (this.type === "Individual" && this.individual.includes("Leader")) {
                 leader = true;
@@ -1954,18 +1957,54 @@ log("Rank: " + element.rank)
         return names
     }
 
-    const Action = (msg) => {
+    const Actions = (msg) => {
         let Tag = msg.content.split(";");
-        let action = Tag[1];
-        let element = Elements[Tag[2]];
+        let element = Elements[Tag[1]];
+        let action = Tag[2];
         if (!element) {
             sendChat("","Not in Array");
             return;
         }
+   
+        SetupCard(element.name,action,element.nation);
+        
+        let errorMsg = [];
+
         if (element.token.get("aura1_color") === "#000000") {
-            sendChat("","Element cannot do any further Actions this turn");
+            errorMsg.push("Element already finished its Actions");
+        }
+        if (action === "Rally" && element.rallied === true) {
+            errorMsg.push("Element already Rallied");
+        }
+        if (action === "Move" && element.moved === true) {
+            errorMsg.push("Element already Moved");
+        }
+        if (action === "Fire" && element.fired === true) {
+            errorMsg.push("Element already Fired");
+        }
+        if (action === "Spot" && element.spotted === true) {
+            errorMsg.push("Element already Spotted");
+        }
+        if ((action === "Call Artillery" || action === "Reload") && (element.rallied === true || element.moved === true || element.spotted === true) || element.fired === true) {
+            errorMsg.push("Element already did other Actions");
+        }
+        if (action === "Move" && element.moveOrFire === true && element.fired === true) {
+            errorMsg.push("Element Fired");
+        }
+        if (action === "Fire" && element.moveOrFire === true && element.moved === true) {
+            errorMsg.push("Element Moved");
+        }
+        if (action !== "Rally" && element.Status() === "Broken") {
+            errorMsg.push("Element Broken, can only Rally");
+        }
+
+
+        if (ErrorMsg(errorMsg)) {
+            PrintCard();
             return;
         }
+
+
         //is section already activated, if not, activate section
         if (element.sectionID !== activeSectionID) {
             //prev active section now all done
@@ -2005,88 +2044,12 @@ log("Rank: " + element.rank)
 
 
 
-
-
-
-
-
-    }
-
-
-
-
-
-
-    const Activate = (msg) => {
-        let Tag = msg.content.split(";");
-        let id = Tag[1];
-        let initiative = Tag[2] === "Initiative" ? true:false;
-        let refElement = Elements[id];
-        if (!refElement) {
-            sendChat("","Not in Array");
-            return;
-        }
-        if (refElement.sectionID === activeSectionID) {
-            sendChat("","Is Currently Activated");
-            return;
-        }
-        if (refElement.token.get("aura1_color") === "#000000" && initiative === false) {
-            sendChat("","Unit has already Activated this turn");
-            sendChat("","An Initiative Chip could be used");
-            return;
-        }
-
-
-
-
-        let elementIDs = state.FbF.elements[activeSectionID];
-        _.each(elementIDs,elementID => {
-            let element = Elements[elementID];
-            if (element && element.token) {
-                element.token.set("aura1_color","#000000");
-            }
-        })
-
-
-
-
-        let sectionID = refElement.sectionID;
-        elementIDs = state.FbF.elements[sectionID];
-        let sectionName = refElement.name;
-        _.each(elementIDs,elementID => {
-            let element = Elements[elementID];
-            if (element && element.token) {
-                if (element.type === "Individual" && element.individual.includes("Leader")) {
-                    sectionName = element.name;
-                }
-                let status = element.Status();
-                let aura = "#ffffff";
-                let tint = (element.token.get("tint_color") === "#000000") ? "#000000":"transparent";
-                if (status === "Broken") {
-                    aura = "#ff0000";
-                    tint = "#ff0000";
-                }
-                element.token.set({
-                    tint_color: tint,
-                    aura1_color: aura,
-                })
-                element.moved = false;
-                element.fired = false;
-                element.rallied = false;
-                element.spotted = false;
-
-
-            }
-        })
-
-        activeSectionID = sectionID;
-        SetupCard("Activation","",refElement.nation);
-        outputCard.body.push(sectionName + "'s Unit is activated")
-        if (initiative === true) {
-            outputCard.body.push("An Initiative Token was Used");
-        }
         PrintCard();
     }
+
+
+
+
 
 
 
@@ -2560,7 +2523,6 @@ log("Rank: " + element.rank)
             }
             element.hexLabel = newLabel;
             LastElement(element);
-            element.moved = true;
             ElementSpot(element);
         } 
         if (element && tok.get("rotation") !== prev.rotation) {
@@ -2627,8 +2589,8 @@ log("Rank: " + element.rank)
             case '!NextPhase':
                 NextPhase();
                 break;
-            case '!Activate':
-                Activate(msg);
+            case '!Actions':
+                Actions(msg);
                 break;
             case '!Rally':
                 Rally(msg);
