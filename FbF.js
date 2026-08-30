@@ -11,6 +11,7 @@ const Main = (() => {
     let Elements = {};
     let activeSectionID; //sectionID that just activated
     let activeElementID; //last element that activated
+    let CloseCombats = []
 
     let SurnameList = {
         Germany: ["Schmidt","Schneider","Fischer","Weber","Meyer","Wagner","Becker","Schulz","Hoffmann","Bauer","Richter","Klein","Wolf","Schroder","Neumann","Schwarz","Braun","Hofmann","Werner","Krause","Konig","Lang","Vogel","Frank","Beck"],
@@ -195,6 +196,7 @@ const Main = (() => {
     const SM = {
         ammo: "status_Shell::5553215",
         oppfire: "status_red",
+        CC: "status_green",
     }
 
 
@@ -1754,6 +1756,7 @@ const Main = (() => {
             deck: [26,26],
             losLines: [],
             markers: [],           
+            closeCombat: false,
             sectionIDs: {}, //ref by elementID - shows the sectionID
             sectionMarkers: {}, //ref by sectionID - shows the marker
             elements: {}, //ref by sectionID, shows all elementIDs in the section
@@ -1818,7 +1821,24 @@ const Main = (() => {
         NextPhase();
     }
 
-    const NextPhase = () => {
+    const NextPhase = (ccdone = false) => {
+        if (ccdone === false) {
+            //check for Close Combat involving prev activated section
+            CloseCombatCheck();
+        }
+        if (CloseCombats.length > 0) {
+            let lastElement = Elements[activeElementID];
+            let nation = "Neutral";
+            if (lastElement) {
+                nation = lastElement.nation;
+            }
+            SetupCard("Close Combats!","",nation);
+            outputCard.body.push("There are Close Combats to Resolve");
+            outputCard.body.push("Click Button when ready to Start");
+            ButtonInfo("Start Close Combats","!RunCC");
+            PrintCard();
+            return;
+        }
         if (state.FbF.unitsLeftToActivate[0] === 0 && state.FbF.unitsLeftToActivate[1] === 0) {
             NextTurn();
         } else {
@@ -2384,9 +2404,68 @@ const Main = (() => {
         return true;
     }
 
+    const CloseCombatCheck = () => {
+        CloseCombats = [];
+        let groups = AdjacentTokens();
+        ccLoop1:
+        for (let i=0;i<groups.length;i++) {
+            let group = groups[i];
+            if (group.length === 1) {continue};
+            let el1 = Elements[group[0]];
+            if (el1.token.get(SM.CC)) {continue};
+            let startNation = el1.nation;
+            for (let k=1;k<group.length;k++) {
+                let nation = Elements[group[k]].nation;
+                if (nation !== startNation) {
+                    CloseCombats.push(group);
+                    continue ccLoop1;
+                }
+            }
+        }
+    }
+
+    const RunCC = () => {
+//put in tips
+        let group = CloseCombats.shift();
+        if (group) {
+            let sides = [[],[]]; //elements on each side
+            let drm = [0,0]; //dice roll modifiers
+            let leaders = [0,0]
+            _.each(group,id => {
+                let element = Elements[id];
+                sides[element.player].push(element);
+                if (element.leader === true && element.Status !== "Broken") {
+                    leaders[element.player] = 1;
+                }
+                if (element.name.includes("SMG") || element.name.includes("Engineer") || element.name.includes("Pioneer")) {
+                    drm[element.player]++;
+                }
+                //Banzai chearge here
+                if (element.type.includes("Team")) {
+                    drm[element.player]--;
+                }
+                if (element.Status() === "Broken" || element.type === "Crewed Weapon") {
+                    drm[element.player]-=2;
+                }
+
+            })
+
+
+
+
+
+
+
+        } else {
+            NextPhase(true);
+        }
+    }
+
+
+
+
 
     const AdjacentTokens = (radius = 2) => {
-        
         const visited = [];
         const groups = [];
         const keys = Object.keys(Elements);
@@ -2400,7 +2479,7 @@ const Main = (() => {
                 let d = Elements[key].Distance(Elements[current]);
                 if (d < radius) {
                     neighbours.push(key);
-                }
+                } 
             }
             return neighbours;
         };
