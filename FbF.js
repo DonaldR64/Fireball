@@ -1809,6 +1809,32 @@ log("Rank: " + element.rank)
         }
     }
 
+
+    const Spot = (msg) => {
+        let id = msg.selected[0]._id;
+        let element = Elements[id];
+        //place a nearby spot marker, player moves it and clicks a macro on it
+        //works in an 'area' of terrain eg a building, woods area or a line of terrain
+        
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
     const Activate = (msg) => {
         let Tag = msg.content.split(";");
         let id = Tag[1];
