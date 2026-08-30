@@ -194,6 +194,7 @@ const Main = (() => {
 
     const SM = {
         ammo: "status_Shell::5553215",
+        oppfire: "status_red",
     }
 
 
@@ -705,6 +706,7 @@ const Main = (() => {
             this.cover = 0;
             this.coverNote = "";
             this.losLevel = 0;
+            this.concealment = false;
             this.edges = {};
             _.each(DIRECTIONS,a => {
                 this.edges[a] = "Open";
@@ -799,7 +801,6 @@ const Main = (() => {
                     antiInfantry: wai, //an array, white then red
                     notes: wnotes,
                 }
-log(weapon)
                 weaponArray.push(weapon);
             }
 
@@ -811,11 +812,10 @@ log(weapon)
 
             this.moved = false;
             this.fired = false;
-            this.rallies = false;
+            this.rallied = false;
             this.spotted = false;
-
+            this.endSpot = false;
             this.notes = [];
-
 
 
             this.sectionID = state.FbF.sectionIDs[id] || "None";
@@ -853,10 +853,10 @@ log(weapon)
             if (reason === "Rally" && this.recon === false && this.leader === false) {target = 6};
             let leader = this.Leader();
             let codicil = "";
-            if (leader) {
+            if (leader && leader.morale > target) {
                 target = leader.morale;
                 codicil = " [Leader]";
-            }
+            } 
             let status = this.Status();
 
             let rolls = [];
@@ -908,6 +908,10 @@ log(weapon)
             } else if (reason === "Charge") {
                 if (fail === 0) {
                     outputCard.body.push(this.name + " can Charge into contact, ending its Turn");
+                    if (this.moved === true) {
+                        outputCard.body.push("Its total movement can't be more than " + this.move + "hexes");
+                    }
+
                     if (leader) {
                         if (leader.token.get("aura1_color") === "#000000") {
                             outputCard.body.push(leader.name + " may also be Charged if desired");
@@ -1118,7 +1122,10 @@ log(weapon)
         AddAbility("Action",actions,element.charID);
 
 
-
+        //oppfire
+        if (element.weaponArray.length > 0) {
+            AddAbility("Opp Fire","!Actions;@{selected|token_id};Opp Fire;@{target}token_id}",element.charID);
+        }
 
 
 
@@ -1895,8 +1902,8 @@ log(weapon)
         element.spotted = true;
     }
 
-    const ElementSpot = (element) => {
-        //3 hexes
+    const EndSpot = (element) => {
+        //3 hexes for hidden, LOS if not in concealment
         let enemies = SpotFunction(element,"end");
         if (enemies.length > 0) {
             SetupCard(element.name,"Spot",element.nation);
@@ -1911,41 +1918,47 @@ log(weapon)
         let closestD = 1000;
         let cutoff = (timing === "end") ? 4:1000;
         let closestElement;
+        let names = [];
+
         _.each(Elements,element2 => {
             if (element2.nation !== element.nation) {
                 if (element2.token.get("tint_color") === "#000000") {
                     let d = element2.Distance(element);
-                    if (d < closestD && d < cutoff) {
-                        let losResult = LOS(element,element2);
-                        if (losResult.los === true) {
-                            closestD = d;
-                            closestElement = element2;
-                        }
+                    let los = LOS(element,element2).los;
+                    let concealed = HexMap[element2.hexLabel].concealment;
+                    if (d < closestD && d < cutoff && los === true && concealed === true) {
+                        closestD = d;
+                        closestElement = element2;
+                    }
+                    if (concealed === false && los === true) {
+                        names.push(element2.name);
+                        element2.token.set("tint_color","transparent");
                     }
                 }
             }
         })
-        if (!closestElement) {
-            return [];
+
+        //spotting of closest hidden element and its group
+        if (closestElement) {
+            let groups = AdjacentTokens();
+            let group;
+            for (let i=0;i<groups.length;i++) {
+                if (groups[i].includes(closestElement.id)) {
+                    group = groups[i];
+                    break;
+                } 
+            }
+            if (group.length > 0) {
+                _.each(group,id => {
+                    let el = Elements[id];
+                    if (el.token.get("tint_color") === "#000000") {
+                        el.token.set("tint_color","transparent");
+                        names.push(el.name);
+                    }
+                })
+            }
         }
-        let names = [];
-        let groups = AdjacentTokens();
-        let group;
-        for (let i=0;i<groups.length;i++) {
-            if (groups[i].includes(closestElement.id)) {
-                group = groups[i];
-                break;
-            } 
-        }
-        if (group.length > 0) {
-            _.each(group,id => {
-                let el = Elements[id];
-                if (el.token.get("tint_color") === "#000000") {
-                    el.token.set("tint_color","transparent");
-                    names.push(el.name);
-                }
-            })
-        }
+
         return names
     }
 
@@ -1956,24 +1969,66 @@ log(weapon)
         let action = Tag[2];
         let targetElement = Elements[Tag[2]] || "";
 
-
         if (!element) {
             sendChat("","Not in Array");
             return;
         }
    
+       //check if element in CC
+        let cc = false;
+        let neighbourCubes = HexMap[element.hexLabel].cube.neighbours();
+        ccLoop:
+        for (let c=0;c<neighbourCubes.length;c++) {
+            let hex = HexMap[neighbourCubes[c].label()];
+            if (hex && hex.tokenIDs.length > 0) {
+                for (let i=0;i<hex.tokenIDs.length;i++) {
+                    let el2 = Elements[hex.tokenIDs[i]];
+                    if (el2.nation !== element.nation) {
+                        cc = true;
+                        break ccLoop;
+                    }
+                }
+            }
+        }
+        //check if target in CC if fire/oppfire
+        let targetCC = false;
+        if ((action === "Fire" || action === "Opp Fire") && targetElement) {
+            let neighbourCubes = HexMap[targetElement.hexLabel].cube.neighbours();
+            ccLoop2:
+            for (let c=0;c<neighbourCubes.length;c++) {
+                let hex = HexMap[neighbourCubes[c].label()];
+                if (hex && hex.tokenIDs.length > 0) {
+                    for (let i=0;i<hex.tokenIDs.length;i++) {
+                        let el2 = Elements[hex.tokenIDs[i]];
+                        if (el2.nation !== targetElement.nation) {
+                            cc = true;
+                            break ccLoop2;
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+
+
+
         SetupCard(element.name,action,element.nation);
         
         let errorMsg = [];
 
-        if (element.token.get("aura1_color") === "#000000") {
+        if (element.token.get("aura1_color") === "#000000" && action !== "Opp Fire") {
             errorMsg.push("Element already finished its Actions");
         }
         if (action === "Rally" && element.rallied === true) {
             errorMsg.push("Element already Rallied");
         }
-        if ((action === "Move" || action === "Charge") && element.moved === true) {
+        if (action === "Move" && element.moved === true) {
             errorMsg.push("Element already Moved");
+        }
+        if (action === "Charge" && (element.fired === true || element.spotted === true || element.rallied === true)) {
+            errorMsg.push("Element cannot Charge due to its other Actions");
         }
         if (action === "Fire" && element.fired === true) {
             errorMsg.push("Element already Fired");
@@ -1990,6 +2045,10 @@ log(weapon)
         if (action === "Fire" && element.moveOrFire === true && element.moved === true) {
             errorMsg.push("Element Moved");
         }
+        if (action === "Fire" && element.token.get(SM.ammo) === true) {
+            errorMsg.push("Element is Out of Ammo or Jammed");
+        }
+
         if (action !== "Rally" && status === "Broken") {
             errorMsg.push("Element Broken, can only Rally");
         }
@@ -1999,8 +2058,23 @@ log(weapon)
         if (action === "Reload" && element.token.get(SM.ammo) === false) {
             errorMsg.push("Element is not Out of Ammo/Jammed");
         }
+        if (action === "Opp Fire" && element.token.get(SM.ammo) === true) {
+            errorMsg.push("Element is Out of Ammo or Jammed");
+        }
+        if (action === "Opp Fire" && element.token.get(SM.oppfire) === true) {
+            errorMsg.push("Element has already Opp Fired this Phase");
+        }
+        if (cc === true) {
+            errorMsg.push("Element is locked in Close Combat and may not take any Actions");
+        }
+        if (targetCC === true) {
+            errorMsg.push("Target is locked in Close Combat and may not be Fired upon");
+        }
+        if (action === "Opp Fire" && status === "Suppressed") {
+            errorMsg.push("Suppressed Units may not Opp Fire");
+        }
 
-
+//Targets moving within a building cannot be hit with opportunity fire, unless the firer is in the same building.
 
         if (ErrorMsg(errorMsg)) {
             PrintCard();
@@ -2009,7 +2083,7 @@ log(weapon)
 
 
         //is section already activated, if not, activate section
-        if (element.sectionID !== activeSectionID) {
+        if (element.sectionID !== activeSectionID && action !== "Opp Fire") {
             //prev active section now all done
             let elementIDs = state.FbF.elements[activeSectionID];
             _.each(elementIDs,elementID => {
@@ -2033,18 +2107,37 @@ log(weapon)
                 element2.fired = false;
                 element2.rallied = false;
                 element2.spotted = false;
+                element2.endSpot = false;
+                element2.notes = [];
+            })
+            //clear all oppfires
+            _.each(Elements,element => {
+                element.token.set(SM.oppfire,false);
             })
         }
 
-        //if not current element
-        if (element.id !== activeElementID) {
-            let element2 = Elements[activeElementID];
-            if (element2) {
-                element2.SetStatus("Activated");
+        //if not current element and not opp fire
+        if (action !== "Opp Fire") {
+            if (element.id !== activeElementID) {
+                let element2 = Elements[activeElementID];
+                if (element2) {
+                    element2.SetStatus("Activated");
+                    if (element2.moved === true && element2.endSpot === false) {
+                        EndSpot(element2);
+                        element2.endSpot = true;
+                    }            
+                }
+                activeElementID = element.id;
+                element.SetStatus("Current Element");
+            } else {
+                if (element.moved === true && element.endSpot === false) {
+                    EndSpot(element);
+                    element.endSpot = true;
+                }
             }
-            activeElementID = element.id;
-            element.SetStatus("Current Element");
         }
+
+        SetupCard(element.name,action,element.nation); //may have been 'used' already
 
         switch(action) {
             case 'Charge':
@@ -2070,7 +2163,9 @@ log(weapon)
             case 'Reload':
                 Reload(element);
                 break;
-
+            case 'Opp Fire':
+                Fire(element,targetElement,"Opp");
+                break;
 
         }
 
@@ -2121,7 +2216,7 @@ log(weapon)
         SetupCard(shooter.name,"Line of Sight",shooter.nation);
 
         let losResult = LOS(shooter,target);
-        outputCard.body.push("Distance: " + losResult.distance * 30 + " feet");
+        outputCard.body.push("Distance: " + losResult.distance + " hexes [" + losResult.distance * 30 + " feet]");
         outputCard.body.push("[hr]");
         if (losResult.los === false) {
             outputCard.body.push("No LOS due to " + losResult.losReason + " at " + losResult.blockedHexLabel);
@@ -2129,6 +2224,7 @@ log(weapon)
             coverLevel = [" No "," Soft "," Hard "," Bunker "];
             outputCard.body.push("Target has" + coverLevel[losResult.cover] + "Cover");
         }
+
 
         PrintCard();
     }
@@ -2525,16 +2621,17 @@ log(weapon)
         element.rallied = true;
     }
 
-    const Fire = (shooter,target) => {
+    const Fire = (shooter,target,special) => {
+        //special may be opp fire ? how to figure targetted ?
+        
 
 
 
 
 
 
-
-
-
+        //mark oppfired shooter with SM.oppfire
+        //hidden shooter revealed
     }
 
 
@@ -2565,7 +2662,6 @@ log(weapon)
                 HexMap[newLabel].tokenIDs.push(tok.id);
             }
             element.hexLabel = newLabel;
-            ElementSpot(element);
             //opportunity spotting
         } 
         if (element && tok.get("rotation") !== prev.rotation) {
