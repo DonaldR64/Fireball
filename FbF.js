@@ -1108,7 +1108,7 @@ log(weapon)
         if (element.type === "Weapons Team" || element.type === "Vehicle" || element.type === "Soft Vehicle") {
             actions += "|Reload,Reload";
         }
-        if (element.recon === true || element.leader === true) {
+        if (element.recon === true || element.type === "Individual" || element.leader === true) {
             actions += "|Spot,Spot";
         }
 
@@ -1981,6 +1981,9 @@ log(weapon)
         if (action === "Spot" && element.spotted === true) {
             errorMsg.push("Element already Spotted");
         }
+        if (action === "Spot" && element.fired === true && element.recon === true) {
+            errorMsg.push("Recon Element cannot Spot if it Fired");
+        }
         if (action === "Move" && element.moveOrFire === true && element.fired === true) {
             errorMsg.push("Element Fired");
         }
@@ -2563,6 +2566,7 @@ log(weapon)
             }
             element.hexLabel = newLabel;
             ElementSpot(element);
+            //opportunity spotting
         } 
         if (element && tok.get("rotation") !== prev.rotation) {
             log(element.name + " turning")
