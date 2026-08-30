@@ -193,7 +193,7 @@ const Main = (() => {
 
 
     const SM = {
-
+        ammo: "status_Shell::5553215",
     }
 
 
@@ -762,7 +762,7 @@ const Main = (() => {
             this.recon = aa.recon === "1" ? true:false;
             this.move = parseInt(aa.move) || 0;
             this.moveOrFire = (aa.movefire === "1") ? true:false;
-
+            this.crossings = (this.type.includes("Vehicle") || this.type === "Crewed Weapon") ? 1:2;
 
             let leader = false;
             if (this.type === "Individual" && this.individual.includes("Leader")) {
@@ -814,6 +814,7 @@ log(weapon)
             this.rallies = false;
             this.spotted = false;
 
+            this.notes = [];
 
 
 
@@ -842,11 +843,19 @@ log(weapon)
         }
 
         Morale(reason = "Morale",number = 1) {
+            if (this.notes.includes("Leader Tag Along")) {
+                //auto pass
+                outputCard.body.push(this.name +" can Charge into contact, ending its Turn");
+                this.notes.splice(this.notes.indexOf("Leader Tag Along"),1);
+                return;
+            }
             let target = this.morale;
             if (reason === "Rally" && this.recon === false && this.leader === false) {target = 6};
             let leader = this.Leader();
+            let codicil = "";
             if (leader) {
                 target = leader.morale;
+                codicil = " [Leader]";
             }
             let status = this.Status();
 
@@ -865,7 +874,7 @@ log(weapon)
             _.each(rolls,roll => {
                 line += DisplayDice(roll,this.nation,24) + " ";
             })
-            line += " vs. " + target + "+";
+            line += " vs. " + target + "+" + codicil;
             outputCard.body.push(line);
             if (reason === "Rally") {
                 if (fail > 0) {
@@ -895,6 +904,20 @@ log(weapon)
                 } else if (fail > 1) {
                     outputCard.body.push(this.name + " is Eliminated");
                     this.SetStatus("Routed");
+                }
+            } else if (reason === "Charge") {
+                if (fail === 0) {
+                    outputCard.body.push(this.name + " can Charge into contact, ending its Turn");
+                    if (leader) {
+                        if (leader.token.get("aura1_color") === "#000000") {
+                            outputCard.body.push(leader.name + " may also be Charged if desired");
+                        } else {
+                            leader.notes.push("Leader Tag Along");
+                            outputCard.body.push(leader.name + " when activated, may choose to Charge, without needing a Morale Test");
+                        }
+                    }
+                } else {
+                    outputCard.body.push(this.name + " stays where it is, and cannot move any further this Turn");
                 }
             }
 
@@ -948,10 +971,19 @@ log(weapon)
                 this.token.set({
                     aura1_color: "#000000",
                 })
-            } else if (status === "Active") {
+            } else if (status === "Current Section") {
                 this.token.set({
                     aura1_color: "#ffffff",
                 })
+            } else if (status === "Current Element") {
+                this.token.set({
+                    aura1_color: "#0000ff",
+                })
+            } else if (status === 'Revealed') {
+                this.token.set({
+                    tint_color: "transparent",
+                })
+                //twin if not already
             }
 
 
@@ -967,10 +999,7 @@ log(weapon)
             let leader;
             let leaderRank=0;
             _.each(Elements,element => {
-log(element.name)
-log("Leader: " + element.leader)
-log("Rank: " + element.rank)
-                if (element.nation === this.nation && element.leader === true && element.id !== this.id && element.rank > this.rank) {
+                if (element.nation === this.nation && element.leader === true && element.id !== this.id && element.rank > this.rank && element.Status() !== "Broken") {
                     if (element.rank > 1 || (element.rank === 1 && element.sectionID === this.sectionID)) {
                         let d = element.Distance(this);
                         if (d < 2) {
@@ -1096,50 +1125,17 @@ log("Rank: " + element.rank)
 
     }
 
-    const RestoreAmmo = (msg) => {
-        let Tag = msg.content.split(";");
-        let id = Tag[1];
-        let refElement = Elements[id];
-        let initiative = (Tag[2] === "Initiative") ? true:false;
-        SetupCard("Reload/Unjam","",refElement.nation);
-        if (initiative === false) {
-            if (refElement.rallied === true || refElement.moved === true || refElement.fired === true) {
-                outputCard.body.push("Element has done other Actions");
-                PrintCard();
-                return;
-            }
-            if (refElement.Status() === "Broken") {
-                outputCard.body.push("Element is Broken");
-                PrintCard();
-                return;
-            }
-
-            if (randomInteger(6) > 4) {
-                outputCard.body.push("Success!");
-                outputCard.body.push(refElement.name + " has reloaded/fixed the weapon jam");
-                refElement.token.set(SM.ammo,false);
-            } else {
-                outputCard.body.push("[#ff0000]Failure![/#]");
-                outputCard.body.push(refElement.name + " remains Out of Ammo or Jammed"); 
-            }
-            outputCard.body.push("[hr]");
-            outputCard.body.push(refElement.name + "'s Activation is done");
+    const Reload = (element) => {
+        if (randomInteger(6) > 4) {
+            outputCard.body.push("Success!");
+            outputCard.body.push(element.name + " has reloaded/fixed the weapon jam");
+            element.token.set(SM.ammo,false);
         } else {
-            let sectionID = refElement.sectionID;
-            let elementIDs = state.FbF.elements[sectionID];
-            let sectionName = refElement.name;
-            _.each(elementIDs,elementID => {
-                let element = Elements[elementID];
-                if (element && element.token) {
-                    if (element.type === "Individual" && element.individual.includes("Leader")) {
-                        sectionName = element.name;
-                    }
-                    element.token.set(SM.ammo,false);
-                }
-            })
-            outputCard.body.push("All elements in " + sectionName + "'s Unit reload and fix any weapon jams");
+            outputCard.body.push("[#ff0000]Failure![/#]");
+            outputCard.body.push(element.name + " remains Out of Ammo or Jammed"); 
         }
-        PrintCard();
+        outputCard.body.push("Its Turn is Done");
+        element.SetStatus("Activated");
     }
 
 
@@ -1729,6 +1725,10 @@ log("Rank: " + element.rank)
     const ClearState = (msg) => {
         let Tag = msg.content.split(";");
         LoadPage();
+        activeSectionID = "";
+        activeElementID = "";
+
+
 
         RemoveDead();
         BuildMap();
@@ -1877,29 +1877,21 @@ log("Rank: " + element.rank)
     }
 
 
-    const Spot = (msg) => {
-        let id = msg.selected[0]._id;
-        let element = Elements[id];
-        SetupCard(element.name,"Spot",element.nation);
-        if (element.spotted === false) {
-            let roll = randomInteger(6);
-            let revealed = false
-            if (roll > 4) {
-                let enemies = SpotFunction(element,"closest");
-                if (enemies.length > 0) {
-                    revealed = true;
-                    _.each(enemies,enemy => {
-                        outputCard.body.push(enemy + " Spotted");
-                    })
-                }
-            } 
-            if (revealed === false) {
-                outputCard.body.push("No Enemies Spotted");
+    const Spot = (element) => {
+        let roll = randomInteger(6);
+        let revealed = false
+        if (roll > 4) {
+            let enemies = SpotFunction(element,"closest");
+            if (enemies.length > 0) {
+                revealed = true;
+                _.each(enemies,enemy => {
+                    outputCard.body.push(enemy + " Spotted");
+                })
             }
-        } else {
-            outputCard.body.push(element.name + " already Spotted this turn");
+        } 
+        if (revealed === false) {
+            outputCard.body.push("No Enemies Spotted");
         }
-        PrintCard();
         element.spotted = true;
     }
 
@@ -1960,7 +1952,11 @@ log("Rank: " + element.rank)
     const Actions = (msg) => {
         let Tag = msg.content.split(";");
         let element = Elements[Tag[1]];
+        let status = element.Status();
         let action = Tag[2];
+        let targetElement = Elements[Tag[2]] || "";
+
+
         if (!element) {
             sendChat("","Not in Array");
             return;
@@ -1976,7 +1972,7 @@ log("Rank: " + element.rank)
         if (action === "Rally" && element.rallied === true) {
             errorMsg.push("Element already Rallied");
         }
-        if ((action === "Move" || action === "Charge!") && element.moved === true) {
+        if ((action === "Move" || action === "Charge") && element.moved === true) {
             errorMsg.push("Element already Moved");
         }
         if (action === "Fire" && element.fired === true) {
@@ -1985,18 +1981,22 @@ log("Rank: " + element.rank)
         if (action === "Spot" && element.spotted === true) {
             errorMsg.push("Element already Spotted");
         }
-        if ((action === "Call Artillery" || action === "Reload") && (element.rallied === true || element.moved === true || element.spotted === true) || element.fired === true) {
-            errorMsg.push("Element already did other Actions");
-        }
         if (action === "Move" && element.moveOrFire === true && element.fired === true) {
             errorMsg.push("Element Fired");
         }
         if (action === "Fire" && element.moveOrFire === true && element.moved === true) {
             errorMsg.push("Element Moved");
         }
-        if (action !== "Rally" && element.Status() === "Broken") {
+        if (action !== "Rally" && status === "Broken") {
             errorMsg.push("Element Broken, can only Rally");
         }
+        if (action === "Rally" && status !==  "Broken" && element.leader === false) {
+            errorMsg.push("Element not Broken");
+        }
+        if (action === "Reload" && element.token.get(SM.ammo) === false) {
+            errorMsg.push("Element is not Out of Ammo/Jammed");
+        }
+
 
 
         if (ErrorMsg(errorMsg)) {
@@ -2021,16 +2021,11 @@ log("Rank: " + element.rank)
             _.each(elementIDs,elementID => {
                 let element2 = Elements[elementID];
                 let status = element2.Status();
-                let aura = "#ffffff";
-                let tint = (element2.token.get("tint_color") === "#000000") ? "#000000":"transparent";
                 if (status === "Broken") {
-                    aura = "#ff0000";
-                    tint = "#ff0000";
+                    element2.SetStatus("Broken");
+                } else {
+                    element2.SetStatus("Current Section");
                 }
-                element2.token.set({
-                    tint_color: tint,
-                    aura1_color: aura,
-                })
                 element2.moved = false;
                 element2.fired = false;
                 element2.rallied = false;
@@ -2038,6 +2033,43 @@ log("Rank: " + element.rank)
             })
         }
 
+        //if not current element
+        if (element.id !== activeElementID) {
+            let element2 = Elements[activeElementID];
+            if (element2) {
+                element2.SetStatus("Activated");
+            }
+            activeElementID = element.id;
+            element.SetStatus("Current Element");
+        }
+
+        switch(action) {
+            case 'Charge':
+                element.Morale("Charge");
+                element.SetStatus("Activated");
+                element.SetStatus("Revealed");
+                break;
+            case 'Move':
+                Move(element);
+                break;
+            case 'Fire':
+                Fire(element,targetElement);
+                break;
+            case 'Spot':
+                Spot(element);
+                break;
+            case 'Rally':
+                Rally(element);
+                break;
+            case 'Call Artillery':
+                CallArtillery(element);
+                break;
+            case 'Reload':
+                Reload(element);
+                break;
+
+
+        }
 
 
 
@@ -2048,6 +2080,16 @@ log("Rank: " + element.rank)
     }
 
 
+    const Move = (element) => {
+        outputCard.body.push("Element can move up to " + element.move + " hexes");
+        let s = (element.crossings === 1) ? "":"s";
+        outputCard.body.push("The Element may make " + element.crossings + " crossing" + s);
+        element.moved = true;
+        let leader = element.Leader();
+        if (leader) {
+            outputCard.body.push(leader.name + " can Tag Along if desired");
+        }
+    }
 
 
 
@@ -2446,14 +2488,7 @@ log("Rank: " + element.rank)
 
     }
 
-    const Rally = (msg) => {
-        let element = Elements[msg.selected[0]._id];
-        SetupCard(element.name,"Rally",element.nation);
-        if (element.rallied === true) {
-            outputCard.body.push("Element already Rallied");
-            PrintCard();
-            return;
-        }
+    const Rally = (element) => {
         if (element.leader === true && element.Status() === "Good") {            
             //leader in good order can rally all adjacent units in command structure
             if (element.rank === 1) {
@@ -2482,25 +2517,30 @@ log("Rank: " + element.rank)
                 })
             }
         } else {
-            SetupCard(element.name,"Rally",element.nation);
             element.Morale("Rally");
         }
         element.rallied = true;
-        LastElement(element);
-        PrintCard();
+    }
+
+    const Fire = (shooter,target) => {
+
+
+
+
+
+
+
+
+
     }
 
 
 
-    const LastElement = (element) => {
-        if (element.sectionID === activeSectionID && state.FbF.turn > 0) {
-            let lastElement = Elements[activeElementID];
-            if (lastElement && lastElement !== activeElementID) {
-                lastElement.SetStatus("Activated");
-            }
-            activeElementID = element.id;
-        }
-    }
+
+
+
+
+
 
 
 
@@ -2522,7 +2562,6 @@ log("Rank: " + element.rank)
                 HexMap[newLabel].tokenIDs.push(tok.id);
             }
             element.hexLabel = newLabel;
-            LastElement(element);
             ElementSpot(element);
         } 
         if (element && tok.get("rotation") !== prev.rotation) {
