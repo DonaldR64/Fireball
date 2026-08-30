@@ -897,6 +897,11 @@ log(weapon)
 
         }
 
+
+
+
+
+
         Status() {
             let status = "Unknown"
             let tint = this.token.get("tint_color");
@@ -1048,39 +1053,37 @@ log("Rank: " + element.rank)
         }
 
 
-        let actions = ["Rally"];
+        let actions = "!Actions;@{selected|token_id};?{Action";
+
+        if ((element.leader === true && element.rank > 1) || element.individual === "Forward Observer") {
+            actions += "|Call Artillery,Call Artillery";
+        }
+
+        if (element.type.includes("Squad") || element.type === "Infantry Team" || element.rank > 0) {
+            actions += "|Charge!,Charge";
+        }
 
         if (element.weaponArray.length > 0) {
-            actions.push("Fire");
+            actions += "|Fire,Fire;&#64;&#123;target&#124;token_id&#125;"
         }
+
         if (element.move > 0) {
-            actions.push("Move");
+            actions += "|Move,Move";
         }
+
+        actions += "|Rally,Rally";
 
         if (element.type === "Weapons Team" || element.type === "Vehicle" || element.type === "Soft Vehicle") {
-            actions.push("Reload");
+            actions += "|Reload,Reload";
         }
         if (element.recon === true || element.leader === true) {
-            actions.push("Spot");
-        }
-        if ((element.leader === true && element.rank > 1) || element.individual === "Forward Observer") {
-            actions.push("Call Artillery");
-        }
-        if (element.type.includes("Squad") || element.type === "Infantry Team" || element.rank > 0) {
-            actions.push("Charge");
+            actions += "|Spot,Spot";
         }
 
-        actions = actions.sort();
-log(element.name)
-log(actions)
+        actions += "}";
+        log(actions)
 
-        actions = actions.toString().replaceAll(",","|");
-
-        let ability = "!Action;?{Action|" + actions + "}";
-
-    
-
-        AddAbility("Action",ability,element.charID);
+        AddAbility("Action",actions,element.charID);
 
 
 
@@ -1951,7 +1954,63 @@ log(actions)
         return names
     }
 
+    const Action = (msg) => {
+        let Tag = msg.content.split(";");
+        let action = Tag[1];
+        let element = Elements[Tag[2]];
+        if (!element) {
+            sendChat("","Not in Array");
+            return;
+        }
+        if (element.token.get("aura1_color") === "#000000") {
+            sendChat("","Element cannot do any further Actions this turn");
+            return;
+        }
+        //is section already activated, if not, activate section
+        if (element.sectionID !== activeSectionID) {
+            //prev active section now all done
+            let elementIDs = state.FbF.elements[activeSectionID];
+            _.each(elementIDs,elementID => {
+                let element = Elements[elementID];
+                if (element && element.token) {
+                    element.token.set("aura1_color","#000000");
+                }
+            })
+            //clear new section, set auras etc
+            activeSectionID = element.sectionID;
+            elementIDs = state.FbF.elements[activeSectionID];
+            _.each(elementIDs,elementID => {
+                let element2 = Elements[elementID];
+                let status = element2.Status();
+                let aura = "#ffffff";
+                let tint = (element2.token.get("tint_color") === "#000000") ? "#000000":"transparent";
+                if (status === "Broken") {
+                    aura = "#ff0000";
+                    tint = "#ff0000";
+                }
+                element2.token.set({
+                    tint_color: tint,
+                    aura1_color: aura,
+                })
+                element2.moved = false;
+                element2.fired = false;
+                element2.rallied = false;
+                element2.spotted = false;
+            })
+        }
 
+
+
+
+
+
+
+
+
+
+
+
+    }
 
 
 
