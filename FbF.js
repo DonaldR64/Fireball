@@ -1976,7 +1976,7 @@ log("Rank: " + element.rank)
         if (action === "Rally" && element.rallied === true) {
             errorMsg.push("Element already Rallied");
         }
-        if (action === "Move" && element.moved === true) {
+        if ((action === "Move" || action === "Charge!") && element.moved === true) {
             errorMsg.push("Element already Moved");
         }
         if (action === "Fire" && element.fired === true) {
