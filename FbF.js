@@ -1006,16 +1006,20 @@ log("Rank: " + element.rank)
             AddAbility("Restore Ammo to Unit","!RestoreAmmo;@{target|token_id};Intiative",element.charID);
             AddAbility("Free Activation for Unit","!Activate;@{target|token_id};Initiative",element.charID);
         }
-        let coreTypes = ["Infantry Squad","Infantry Team","Weapons Team","Crewed Weapon","Vehicle","Soft Vehicle"];
-        if (coreTypes.includes(element.type)) {
-            //fire
+        if (element.weaponArray.length > 0) {
+//2 weapons ?
+            AddAbility("Fire","!Fire;@{selected|token_id};@{target|token_id}");
         }
         if (element.type === "Weapons Team" || element.type === "Vehicle" || element.type === "Soft Vehicle") {
             //reload ammo
             AddAbility("Reload/Fix Jam","!RestoreAmmo;@{selected|token_id}",element.charID);
         }
-
-
+        if (element.recon === true || element.leader === true) {
+            AddAbility("Spot","!Spot",element.charID);
+        }
+        if ((element.leader === true && element.rank > 1) || element.individual === "Forward Observer") {
+            AddAbility("Call Artillery","!CallArtillery",element.charID);
+        }
 
 
 
@@ -1037,6 +1041,12 @@ log("Rank: " + element.rank)
                 PrintCard();
                 return;
             }
+            if (refElement.Status() === "Broken") {
+                outputCard.body.push("Element is Broken");
+                PrintCard();
+                return;
+            }
+
             if (randomInteger(6) > 4) {
                 outputCard.body.push("Success!");
                 outputCard.body.push(refElement.name + " has reloaded/fixed the weapon jam");
@@ -2413,8 +2423,18 @@ log(keys)
             case '!Rally':
                 Rally(msg);
                 break;
-            
-
+            case '!RestoreAmmo':
+                RestoreAmmo(msg);
+                break;
+            case '!Spot':
+                Spot(msg);
+                break;
+            case '!CallArtillery':
+                CallArtillery(msg);
+                break;
+            case '!Fire':
+                Fire(msg);
+                break;
         }
     };
 
