@@ -774,8 +774,17 @@ const Main = (() => {
             let weaponArray = [];
 
 
-log(this.name)
-log(this.type)
+
+            this.weaponArray = weaponArray;
+
+            this.moved = false;
+            this.fired = false;
+            this.rallies = false;
+            this.spotted = false;
+
+
+
+
             this.sectionID = state.FbF.sectionIDs[id] || "None";
             let index = HexMap[label].tokenIDs.indexOf(id);
             if (index < 0) {
@@ -1813,20 +1822,83 @@ log("Rank: " + element.rank)
     const Spot = (msg) => {
         let id = msg.selected[0]._id;
         let element = Elements[id];
-        //place a nearby spot marker, player moves it and clicks a macro on it
-        //works in an 'area' of terrain eg a building, woods area or a line of terrain
-        
-
-
-
-
-
+        SetupCard(element.name,"Spot",element.nation);
+        if (element.spotted === false) {
+            let roll = randomInteger(6);
+roll = 6
+            let revealed = false
+            if (roll > 4) {
+                let enemies = SpotFunction(element,"closest");
+                if (enemies.length > 0) {
+                    revealed = true;
+                    _.each(enemies,enemy => {
+                        outputCard.body.push(enemy + " Spotted");
+                    })
+                }
+            } 
+            if (revealed === false) {
+                outputCard.body.push("No Enemies Spotted");
+            }
+        } else {
+            outputCard.body.push(element.name + " already Spotted this turn");
+        }
+        PrintCard();
+        element.spotted = true;
     }
 
+    const ElementSpot = (element) => {
+        //3 hexes
+        let enemies = SpotFunction(element,"end");
+        if (enemies.length > 0) {
+            SetupCard(element.name,"Spot",element.nation);
+            _.each(enemies,enemy => {
+                outputCard.body.push(enemy + " Spotted");
+            })
+            PrintCard();
+        }
+    }
 
-
-
-
+    const SpotFunction = (element,timing) => {
+        let closestD = 1000;
+        let cutoff = (timing === "end") ? 4:1000;
+        let closestElement;
+        _.each(Elements,element2 => {
+            if (element2.nation !== element.nation) {
+                if (element2.token.get("tint_color") === "#000000") {
+                    let d = element2.Distance(element);
+                    if (d < closestD && d < cutoff) {
+                        let losResult = LOS(element,element2);
+                        if (losResult.los === true) {
+                            closestD = d;
+                            closestElement = element2;
+                        }
+                    }
+                }
+            }
+        })
+        if (!closestElement) {
+            return [];
+        }
+        let names = [];
+        let groups = AdjacentTokens();
+        let group;
+        for (let i=0;i<groups.length;i++) {
+            if (groups[i].includes(closestElement.id)) {
+                group = groups[i];
+                break;
+            } 
+        }
+        if (group.length > 0) {
+            _.each(group,id => {
+                let el = Elements[id];
+                if (el.token.get("tint_color") === "#000000") {
+                    el.token.set("tint_color","transparent");
+                    names.push(el.name);
+                }
+            })
+        }
+        return names
+    }
 
 
 
@@ -1863,9 +1935,6 @@ log("Rank: " + element.rank)
             if (element && element.token) {
                 element.token.set("aura1_color","#000000");
             }
-            element.moved = false;
-            element.fired = false;
-            element.rallied = false;
         })
 
 
@@ -1891,6 +1960,12 @@ log("Rank: " + element.rank)
                     tint_color: tint,
                     aura1_color: aura,
                 })
+                element.moved = false;
+                element.fired = false;
+                element.rallied = false;
+                element.spotted = false;
+
+
             }
         })
 
@@ -2096,13 +2171,11 @@ log("Rank: " + element.rank)
     }
 
 
-    const AdjacentTokens = () => {
-
+    const AdjacentTokens = (radius = 2) => {
+        
         const visited = [];
         const groups = [];
         const keys = Object.keys(Elements);
-log("Keys")
-log(keys)
 
         // 1. Helper to find neighbours
         const getneighbours = (current) => {
@@ -2111,7 +2184,7 @@ log(keys)
                 let key = keys[i];
                 if (key === current) {continue};
                 let d = Elements[key].Distance(Elements[current]);
-                if (d < 2) {
+                if (d < radius) {
                     neighbours.push(key);
                 }
             }
@@ -2139,7 +2212,7 @@ log(keys)
             groups.push(group);
         }
 
-        return groups; //will be groups of keys / ids
+        return groups;
     }
 
 
@@ -2378,6 +2451,7 @@ log(keys)
             element.hexLabel = newLabel;
             LastElement(element);
             element.moved = true;
+            ElementSpot(element);
         } 
         if (element && tok.get("rotation") !== prev.rotation) {
             log(element.name + " turning")
