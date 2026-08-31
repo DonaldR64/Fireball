@@ -194,9 +194,11 @@ const Main = (() => {
 
 
     const SM = {
-        ammo: "status_Shell::5553215",
-        oppfire: "status_red",
-        CC: "status_green",
+        ammo: "status_red",
+        oppfire: "status_Shell::5553215",
+
+
+
     }
 
 
