@@ -2438,7 +2438,8 @@ const Main = (() => {
             SetupCard("Close Combat","","Neutral");
             let highestResult = [0,0];
             let sides = [[],[]];
-            let leaders = [false,false]
+            let leaders = [false,false];
+
             for (let i=0;i<group.length;i++) {
                 let attacker = Elements[group[i]];
                 for (let j=0;j<group.length;j++) {
@@ -2446,9 +2447,9 @@ const Main = (() => {
                     let defender = Elements[group[j]];
                     if (defender.nation !== attacker.nation) {
                         let d = attacker.Distance(defender);
-                        if (d < 2) {
+                        let min = (attacker.leader === true) ? 3:2;
+                        if (d < min) {
                             sides[attacker.player].push(attacker.id);
-                            sides[defender.player].push(defender.id);
                         }
                     }
                 }
@@ -2464,6 +2465,9 @@ const Main = (() => {
                 outputCard.body.push("[U]" + state.FbF.nations[side] + "[/u]");
                 for (let i=0;i<sides[side].length;i++) {
                     let element = Elements[sides[side][i]];
+                    if (element.leader === true && sides[side].length > 1) {
+                        continue;
+                    }
                     let drm = 0;
                     let roll = randomInteger(6);
                     let tips = ["Roll: " + roll];
@@ -2503,7 +2507,8 @@ const Main = (() => {
 
                     tips = tips.toString().replaceAll(",","<br>");
                     let result = roll + drm;
-                    let tip = '['+ result + ' ](#" class="showtip" title="' + tips + ')';                
+                    result = Math.min(6,Math.max(result,1));
+                    let tip = '['+ DisplayDice(result,element.nation,24) + ' ](#" class="showtip" title="' + tips + ')';                
                     outputCard.body.push(element.name + ": " + tip);
                     highestResult[side] = Math.max(highestResult[side],result);
                 }
@@ -2674,14 +2679,17 @@ const Main = (() => {
             let sectionID = stringGen();
             let elementMarker = "None";
             let refElement = Elements[group[0]];
+            let groupLetter = "";
 
             if (refElement.player < 2 && refElement.type !== "Initiative Token" && refElement.type !== "Marker") {
                 elementMarker = Nations[refElement.nation].elementmarkers[sectionMarkers[refElement.player]];
+                groupLetter = rowLabels[sectionMarkers[refElement.player]];
                 state.FbF.sectionMarkers[sectionID] = elementMarker;
                 unitNumbers[refElement.player]++;
             };
 
             let elementIDs = [];
+            let num = 0;
             for (let j=0;j<group.length;j++) {
                 let element = Elements[group[j]];
                 elementIDs.push(element.id);
@@ -2691,6 +2699,9 @@ const Main = (() => {
                     let index = randomInteger(Surnames[element.nation].length) - 1;
                     let surname = Surnames[element.nation].splice(index,1);
                     name += " " + surname;
+                } else {
+                    num++;
+                    name += " " + groupLetter + "/" + num;
                 }
                 let a1c = (element.type === "Marker" || element.type === "Initiative Token") ? "":"#00ff00";
                 let tint = (element.type === "Marker" || element.type === "Initiative Token") ? "transparent":"#000000";
