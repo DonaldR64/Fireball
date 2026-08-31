@@ -892,21 +892,31 @@ const Main = (() => {
                             outputCard.body.push(this.name + " is Suppressed");
                             this.SetStatus("Suppressed");
                         } else if (reason === "CC") {
-                            outputCard.body.push(this.name + " remains Good");
+                            if (this.type === "Individual") {
+                                outputCard.body.push(this.name + " stays alive and is in Good Order");
+                            } else {
+                                outputCard.body.push(this.name + " remains in Good Order");
+                            }
                         }
                     } else if (status === "Suppressed") {
                         if (reason === "Firing") {
                             outputCard.body.push(this.name + " remains Suppressed");
                         } else if (reason === "CC") {
-                            outputCard.body.push(this.name + " is Good");
+                            if (this.type === "Individual") {
+                                outputCard.body.push(this.name + " stays alive and is in Good Order");
+                            } else {
+                                outputCard.body.push(this.name + " remains in Good Order");
+                            }
                             this.SetStatus("Good");
                         }
                     } else if (status === "Broken") {
-                        outputCard.body.push(this.name + " remains Broken and may make a Rout Move");
+                        let word = (reason === "CC") ? " must ":" may ";
+                        outputCard.body.push(this.name + " remains Broken and" + word +"make a Rout Move");
                     }
                 } else if (fail === 1) {
                     if (status === "Good" || status === "Suppressed") {
-                        outputCard.body.push(this.name + " is now Broken and may make a Rout Move");
+                        let word = (reason === "CC") ? " must ":" may ";
+                        outputCard.body.push(this.name + " is now Broken and"+ word + "make a Rout Move");
                         this.SetStatus("Broken");
                     } else if (status === "Broken") {
                         outputCard.body.push(this.name + " is Eliminated");
@@ -2438,7 +2448,8 @@ const Main = (() => {
             SetupCard("Close Combat","","Neutral");
             let highestResult = [0,0];
             let sides = [[],[]];
-            let leaders = [false,false];
+            let leaders = [false,false]; //leader in good order
+            let onlyInd = [true,true]; //only individuals, in which case they get 1 dice
 
             for (let i=0;i<group.length;i++) {
                 let attacker = Elements[group[i]];
@@ -2450,13 +2461,17 @@ const Main = (() => {
                         let min = (attacker.leader === true) ? 3:2;
                         if (d < min) {
                             sides[attacker.player].push(attacker.id);
+                            if (attacker.type !== "Individual") {
+                                onlyInd[attacker.player] = false;
+                            }
+                            if (attacker.leader === true && attacker.Status() !== "Broken") {
+                                leaders[attacker.player] = true;
+                            }
                         }
                     }
                 }
-                if (attacker.leader === true && attacker.Status() !== "Broken") {
-                    leaders[attacker.player] = true;
-                }
             }
+
 
             sides[0] = [... new Set(sides[0])];
             sides[1] = [... new Set(sides[1])];
@@ -2465,15 +2480,13 @@ const Main = (() => {
                 outputCard.body.push("[U]" + state.FbF.nations[side] + "[/u]");
                 for (let i=0;i<sides[side].length;i++) {
                     let element = Elements[sides[side][i]];
-                    if (element.leader === true && sides[side].length > 1) {
-                        continue;
-                    }
+                    if (element.type === "Individual" && (onlyInd[side] === false || onlyInd[side] === true && i > 0)) {continue};
                     let drm = 0;
                     let roll = randomInteger(6);
                     let tips = ["Roll: " + roll];
                     if (leaders[side] === true) {
                         drm++;
-                        tips.push("Leader in Combat +1");
+                        tips.push("Leader +1");
                     }
                     if (element.name.includes("SMG")) {
                         drm++;
@@ -2487,6 +2500,10 @@ const Main = (() => {
                     if (element.type.includes("Team")) {
                         drm--;
                         tips.push("Team -1");
+                    }
+                    if (element.type === "Individual") {
+                        drm--;
+                        tips.push("Individual -1");
                     }
                     if (element.Status() === "Broken") {
                         drm -=2;
@@ -2507,7 +2524,7 @@ const Main = (() => {
 
                     tips = tips.toString().replaceAll(",","<br>");
                     let result = roll + drm;
-                    result = Math.min(6,Math.max(result,1));
+                    result = Math.min(10,Math.max(result,0));
                     let tip = '['+ DisplayDice(result,element.nation,24) + ' ](#" class="showtip" title="' + tips + ')';                
                     outputCard.body.push(element.name + ": " + tip);
                     highestResult[side] = Math.max(highestResult[side],result);
@@ -2515,25 +2532,38 @@ const Main = (() => {
                 outputCard.body.push("[hr]");
             }
             let delta = highestResult[0] - highestResult[1];
-            let remaining = ["All"];
+        
+            let winner,loser;
             if (delta > 0) {
-                outputCard.body.push(state.FbF.nations[0] + " Wins!");
-
+                winner = 0;
+                loser = 1;
             } else if (delta < 0) {
-                outputCard.body.push(state.FbF.nations[1] + " Wins!");
-
-            } else {
+                winner = 1;
+                loser = 0;
+            }
+            delta = Math.abs(delta);
+            if (delta === 0) {
                 outputCard.body.push("The Combat ends in a Tie!");
-                remaining = ["Good"];
-            }
-            if (remaining.includes("Only Individuals")) {
-                outputCard.body.push("All Individuals must also take a Rout Move even if in Good Order");
-            }
-            if (remaining.includes("Routing")) {
-                outputCard.body.push("Any Routing Elements are subject to Targetting Fire");
-            }
-            if (remaining.includes("Good")) {
                 outputCard.body.push("The remaining Elements remain Locked in Combat");
+            } else {
+                outputCard.body.push(state.FbF.nations[winner] + " Wins!");
+                if (onlyInd[winner] === true) {
+                    outputCard.body.push("They hold off the enemy long enough to get away. They must immediately conduct a rout move, ending the rout move in good-order. They are subject to Targetting Fire.");
+                } else {
+                    remaining = CCLoser(sides[loser],delta);
+                    if (remaining.Routing || remaining["Routing Indiv"] ) {
+                        outputCard.body.push("Any Routing Elements are subject to Targetting Fire");
+                    }
+                    if (remaining.Good === false && remaining["Good Indiv"]) {
+                        outputCard.body.push("All  Individuals must also make a Rout Move even if in Good Order as there are no remaining Unbroken Troops. They are subject to Targetting Fire.")
+                    }
+                    if (remaining.Good === false && remaining["Good Indiv"] --- false && remaining.Routing === false && remaining["Routing Indiv"] === false) {
+                        outputCard.body.push("All " + state.FbF.nations[loser].short + " Elements were eliminated or Surrendered");
+                    }
+                    if (remaining.Good === true) {
+                        outputCard.body.push("Remaining Elements stay locked in Close Combat");
+                    }
+                }
             }
             if (CloseCombats.length > 0) {
                 ButtonInfo("Next Close Combat","!RunCC");
@@ -2549,40 +2579,35 @@ const Main = (() => {
 
     }
 
-    const CCLoser = (elements,delta) => {
-        let indiv = false;
-        let good = false;
-        let routing = false;
-        _.each(elements,element => {
+    const CCLoser = (ids,delta) => {
+        let remaining = {
+            Good: false,
+            Routing: false,
+            "Good Indiv": false,
+            "Routing Indiv": false,
+        }
+        _.each(ids,id => {
+            let element = Elements[id];
             element.Morale("CC",delta);
             if (element.token.get("status_dead") === false) {
                 if (element.type === "Individual") {
                     if (element.Status() === "Broken") {
-                        routing = true;
+                        remaining["Routing Indiv"] = true;
+                    } else {
+                        remaining["Good Indiv"] = true;
                     }
-                    indiv = true
                 };
                 if (element.type !== "Individual") {
                     if (element.Status() === "Broken") {
-                        routing = true;
+                        remaining["Routing"] = true;
                     } else {
-                        good = true;
+                        remaining["Good"] = true;
                     }
                 }
             }
         })
-        let rem = [];
-        if (indiv === true && good === false) {
-            rem.push("Only Individuals");
-        }
-        if (routing === true) {
-            rem.push("Routing");
-        }
-        if (good === true) {
-            rem.push("Good");
-        }
 
-        return rem;
+        return remaining;
     }
 
 
