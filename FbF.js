@@ -844,7 +844,7 @@ const Main = (() => {
 
         }
 
-        Morale(reason = "Morale",number = 1) {
+        Morale(reason,number = 1) {
             if (this.notes.includes("Leader Tag Along")) {
                 //auto pass
                 outputCard.body.push(this.name +" can Charge into contact, ending its Turn");
@@ -885,13 +885,22 @@ const Main = (() => {
                     outputCard.body.push(this.name + " Rallies");
                     this.SetStatus("Good");
                 }
-            } else if (reason === "Morale") {
+            } else if (reason === "Firing" || reason === "CC") {
                 if (fail === 0) {
                     if (status === "Good") {
-                        outputCard.body.push(this.name + " is Suppressed");
-                        this.SetStatus("Suppressed");
+                        if (reason === "Firing") {
+                            outputCard.body.push(this.name + " is Suppressed");
+                            this.SetStatus("Suppressed");
+                        } else if (reason === "CC") {
+                            outputCard.body.push(this.name + " remains Good");
+                        }
                     } else if (status === "Suppressed") {
-                        outputCard.body.push(this.name + " remains Suppressed");
+                        if (reason === "Firing") {
+                            outputCard.body.push(this.name + " remains Suppressed");
+                        } else if (reason === "CC") {
+                            outputCard.body.push(this.name + " is Good");
+                            this.SetStatus("Good");
+                        }
                     } else if (status === "Broken") {
                         outputCard.body.push(this.name + " remains Broken and may make a Rout Move");
                     }
@@ -970,9 +979,7 @@ const Main = (() => {
                     aura1_color: "#ffff00",
                 })  
             } else if (status === "Routed") {
-//destroy
-
-
+                this.token.set("status_dead",true);
             } else if (status === "Activated") {
                 this.token.set({
                     aura1_color: "#000000",
@@ -2405,7 +2412,7 @@ const Main = (() => {
     }
 
     const CloseCombatCheck = () => {
-        CloseCombats = [];
+        let CloseCombats = [];
         let groups = AdjacentTokens();
         ccLoop1:
         for (let i=0;i<groups.length;i++) {
@@ -2425,41 +2432,168 @@ const Main = (() => {
     }
 
     const RunCC = () => {
-//put in tips
         let group = CloseCombats.shift();
         if (group) {
+            let tips = [["Modifiers"],["Modifiers"]];
             let sides = [[],[]]; //elements on each side
             let drm = [0,0]; //dice roll modifiers
-            let leaders = [0,0]
+            let leaders = [false,false];
+            let onlyIndividuals = [false,false];
+            let dice = [0,0];
+            let nations = ["",""];
+            sendPing(Elements[group[0]].token.get("left"),Elements[group[0]].token.get("top"),Campaign().get("playerpageid"),null,true);
+            SetupCard("Close Combat","","Neutral");
             _.each(group,id => {
                 let element = Elements[id];
+                nations[element.player] = element.nation;
                 sides[element.player].push(element);
                 if (element.leader === true && element.Status !== "Broken") {
-                    leaders[element.player] = 1;
+                    leaders[element.player] = true;
                 }
-                if (element.name.includes("SMG") || element.name.includes("Engineer") || element.name.includes("Pioneer")) {
+                if (element.type !== "Individual") {
+                    dice[element.player]++;
+                    onlyIndividuals[element.player] = false;
+                }
+                if (element.name.includes("SMG")) {
                     drm[element.player]++;
+                    tips[element.player].push("SMG +1");
+                } 
+                if (element.name.includes("Engineer") || element.name.includes("Pioneer")) {
+                    drm[element.player]++;
+                    tips[element.player].push("Engineer +1");
                 }
                 //Banzai chearge here
                 if (element.type.includes("Team")) {
                     drm[element.player]--;
+                    tips[element.player].push("Team -1");
                 }
-                if (element.Status() === "Broken" || element.type === "Crewed Weapon") {
+                if (element.Status() === "Broken") {
                     drm[element.player]-=2;
+                    tips[element.player].push("Broken");
                 }
-
+                if (element.type === "Crewed Weapon") {
+                    drm[element.player]-=2;
+                    tips[element.player].push("Crewed Weapon");
+                }
+                //enclosed armoured vehicle here
+                //open topped vehicle here
+                if (element.type === "Soft Vehicle") {
+                    tips[element.player].push("Soft Vehicle +0");
+                }
+                //molotov cocktails vs vehicles here
+                //grenade bundles / magnetic mines vs vehicles here
+                //demo change vs vehicles here
             })
+            if (leaders[0] === true) {
+                drm[0]++;
+                tips[0].push("Leader +1");
+            } 
+            if (leaders[1] === true) {
+                drm[1]++;
+                tips[1].push("Leader +1");
+            } 
+
+            tips[0] = tips[0].toString().replaceAll(",","<br>");
+            tips[1] = tips[1].toString().replaceAll(",","<br>");
 
 
+            dice = [Math.max(dice[0],1),Math.max(dice[1],1)]; //min 1 dice
 
+            let bestResult = [0,0];
 
+            for (let i=0;i<2;i++) {
+                let results = [];
+                let d = dice[i];
+                for (let j=0;j<d;j++) {
+                    results.push(randomInteger(6) + drm[i])
+                }
+                results.sort().reverse();
+                outputCard.body.push("[U]" + nations[i] + "[/u]");
+                outputCard.body.push("Results: " + results.toString());
+                let tip = '['+ drm[i] + ' ](#" class="showtip" title="' + tips[i] + ')';                
+                outputCard.body.push("Net Modifier: " + tip);
+                outputCard.body.push("[hr]");
+                bestResult[i] = results[0];
+            }
 
-
-
+            let delta = bestResult[0] - bestResult[1];
+            let remaining = ["All"];
+            if (delta > 0) {
+                outputCard.body.push(nations[0] + " Wins!");
+                if (onlyIndividuals[0] === true) {
+                    outputCard.body.push("They can make a Rout Move away");
+                    outputCard.body.push("They are subject to Targetting Fire");
+                } else {
+                    remaining = CCLoser(sides[1],delta);
+                }
+            } else if (delta < 0) {
+                outputCard.body.push(nations[1] + " Wins!");
+                if (onlyIndividuals[1] === true) {
+                    outputCard.body.push("They can make a Rout Move away");
+                    outputCard.body.push("They are subject to Targetting Fire");
+                } else {
+                    remaining = CCLoser(sides[0],Math.abs(delta));
+                }
+            } else {
+                outputCard.body.push("The Combat ends in a Tie!");
+                remaining = ["Good"];
+            }
+            if (remaining.includes("Only Individuals")) {
+                outputCard.body.push("All Individuals must also take a Rout Move even if in Good Order");
+            }
+            if (remaining.includes("Routing")) {
+                outputCard.body.push("Any Routing Elements are subject to Targetting Fire");
+            }
+            if (remaining.includes("Good")) {
+                outputCard.body.push("The remaining Elements remain Locked in Combat");
+            }
+            if (CloseCombats.length > 0) {
+                ButtonInfo("Next Close Combat","!RunCC");
+            } else {
+                ButtonInfo("Next Phase","!RunCC");
+            }
+            PrintCard();
         } else {
             NextPhase(true);
         }
     }
+
+    const CCLoser = (elements,delta) => {
+        let indiv = false;
+        let good = false;
+        let routing = false;
+        _.each(elements,element => {
+            element.Morale("CC",delta);
+            if (element.token.get("status_dead") === false) {
+                if (element.type === "Individual") {
+                    if (element.Status() === "Broken") {
+                        routing = true;
+                    }
+                    indiv = true
+                };
+                if (element.type !== "Individual") {
+                    if (element.Status() === "Broken") {
+                        routing = true;
+                    } else {
+                        good = true;
+                    }
+                }
+            }
+        })
+        let rem = [];
+        if (indiv === true && good === false) {
+            rem.push("Only Individuals");
+        }
+        if (routing === true) {
+            rem.push("Routing");
+        }
+        if (good === true) {
+            rem.push("Good");
+        }
+
+        return rem;
+    }
+
 
 
 
@@ -2824,6 +2958,9 @@ const Main = (() => {
                 break;
             case '!Fire':
                 Fire(msg);
+                break;
+            case '!RunCC':
+                RunCC(msg);
                 break;
         }
     };
