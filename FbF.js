@@ -1743,7 +1743,7 @@ const Main = (() => {
         LoadPage();
         activeSectionID = "";
         activeElementID = "";
-
+        CloseCombats = [];
 
 
         RemoveDead();
@@ -2412,20 +2412,21 @@ const Main = (() => {
     }
 
     const CloseCombatCheck = () => {
-        let CloseCombats = [];
+        CloseCombats = [];
         let groups = AdjacentTokens();
         ccLoop1:
         for (let i=0;i<groups.length;i++) {
             let group = groups[i];
             if (group.length === 1) {continue};
-            let el1 = Elements[group[0]];
-            if (el1.token.get(SM.CC)) {continue};
-            let startNation = el1.nation;
-            for (let k=1;k<group.length;k++) {
-                let nation = Elements[group[k]].nation;
-                if (nation !== startNation) {
-                    CloseCombats.push(group);
-                    continue ccLoop1;
+            for (let j=0;j<group.length;j++) {
+                let el1 = Elements[group[j]];
+                for (let k=0;k<group.length;k++) {
+                    if (j===k) {continue};
+                    let el2 = Elements[group[k]];
+                    if (el2.nation !== el1.nation) {
+                        CloseCombats.push(group);
+                        continue ccLoop1;
+                    }
                 }
             }
         }
@@ -2434,106 +2435,88 @@ const Main = (() => {
     const RunCC = () => {
         let group = CloseCombats.shift();
         if (group) {
-            let tips = [["Modifiers"],["Modifiers"]];
-            let sides = [[],[]]; //elements on each side
-            let drm = [0,0]; //dice roll modifiers
-            let leaders = [false,false];
-            let onlyIndividuals = [false,false];
-            let dice = [0,0];
-            let nations = ["",""];
-            sendPing(Elements[group[0]].token.get("left"),Elements[group[0]].token.get("top"),Campaign().get("playerpageid"),null,true);
             SetupCard("Close Combat","","Neutral");
-            _.each(group,id => {
-                let element = Elements[id];
-                nations[element.player] = element.nation;
-                sides[element.player].push(element);
-                if (element.leader === true && element.Status !== "Broken") {
-                    leaders[element.player] = true;
+            let highestResult = [0,0];
+            let sides = [[],[]];
+            let leaders = [false,false]
+            for (let i=0;i<group.length;i++) {
+                let attacker = Elements[group[i]];
+                for (let j=0;j<group.length;j++) {
+                    if (i === j) {continue};
+                    let defender = Elements[group[j]];
+                    if (defender.nation !== attacker.nation) {
+                        let d = attacker.Distance(defender);
+                        if (d < 2) {
+                            sides[attacker.player].push(attacker.id);
+                            sides[defender.player].push(defender.id);
+                        }
+                    }
                 }
-                if (element.type !== "Individual") {
-                    dice[element.player]++;
-                    onlyIndividuals[element.player] = false;
+                if (attacker.leader === true && attacker.Status() !== "Broken") {
+                    leaders[attacker.player] = true;
                 }
-                if (element.name.includes("SMG")) {
-                    drm[element.player]++;
-                    tips[element.player].push("SMG +1");
-                } 
-                if (element.name.includes("Engineer") || element.name.includes("Pioneer")) {
-                    drm[element.player]++;
-                    tips[element.player].push("Engineer +1");
-                }
-                //Banzai chearge here
-                if (element.type.includes("Team")) {
-                    drm[element.player]--;
-                    tips[element.player].push("Team -1");
-                }
-                if (element.Status() === "Broken") {
-                    drm[element.player]-=2;
-                    tips[element.player].push("Broken");
-                }
-                if (element.type === "Crewed Weapon") {
-                    drm[element.player]-=2;
-                    tips[element.player].push("Crewed Weapon");
-                }
-                //enclosed armoured vehicle here
-                //open topped vehicle here
-                if (element.type === "Soft Vehicle") {
-                    tips[element.player].push("Soft Vehicle +0");
-                }
-                //molotov cocktails vs vehicles here
-                //grenade bundles / magnetic mines vs vehicles here
-                //demo change vs vehicles here
-            })
-            if (leaders[0] === true) {
-                drm[0]++;
-                tips[0].push("Leader +1");
-            } 
-            if (leaders[1] === true) {
-                drm[1]++;
-                tips[1].push("Leader +1");
-            } 
-
-            tips[0] = tips[0].toString().replaceAll(",","<br>");
-            tips[1] = tips[1].toString().replaceAll(",","<br>");
-
-
-            dice = [Math.max(dice[0],1),Math.max(dice[1],1)]; //min 1 dice
-
-            let bestResult = [0,0];
-
-            for (let i=0;i<2;i++) {
-                let results = [];
-                let d = dice[i];
-                for (let j=0;j<d;j++) {
-                    results.push(randomInteger(6) + drm[i])
-                }
-                results.sort().reverse();
-                outputCard.body.push("[U]" + nations[i] + "[/u]");
-                outputCard.body.push("Results: " + results.toString());
-                let tip = '['+ drm[i] + ' ](#" class="showtip" title="' + tips[i] + ')';                
-                outputCard.body.push("Net Modifier: " + tip);
-                outputCard.body.push("[hr]");
-                bestResult[i] = results[0];
             }
 
-            let delta = bestResult[0] - bestResult[1];
+            sides[0] = [... new Set(sides[0])];
+            sides[1] = [... new Set(sides[1])];
+
+            for (let side = 0;side < 2;side++) {
+                outputCard.body.push("[U]" + state.FbF.nations[side] + "[/u]");
+                for (let i=0;i<sides[side].length;i++) {
+                    let element = Elements[sides[side][i]];
+                    let drm = 0;
+                    let roll = randomInteger(6);
+                    let tips = ["Roll: " + roll];
+                    if (leaders[side] === true) {
+                        drm++;
+                        tips.push("Leader in Combat +1");
+                    }
+                    if (element.name.includes("SMG")) {
+                        drm++;
+                        tips.push("SMG +1");
+                    }
+                    if (element.name.includes("Engineer") || element.name.includes("Pioneer")) {
+                        drm++;
+                        tips.push("Engineer +1");
+                    }
+                    //Banzai chearge here
+                    if (element.type.includes("Team")) {
+                        drm--;
+                        tips.push("Team -1");
+                    }
+                    if (element.Status() === "Broken") {
+                        drm -=2;
+                        tips.push("Broken -2");
+                    }
+                    if (element.type === "Crewed Weapon") {
+                        drm -=2;
+                        tips.push("Crewed Weapon -2");
+                    }
+                    //enclosed armoured vehicle here
+                    //open topped vehicle here
+                    if (element.type === "Soft Vehicle") {
+                        tips.push("Soft Vehicle +0");
+                    }
+                    //molotov cocktails vs vehicles here
+                    //grenade bundles / magnetic mines vs vehicles here
+                    //demo change vs vehicles here
+
+                    tips = tips.toString().replaceAll(",","<br>");
+                    let result = roll + drm;
+                    let tip = '['+ result + ' ](#" class="showtip" title="' + tips + ')';                
+                    outputCard.body.push(element.name + ": " + tip);
+                    highestResult[side] = Math.max(highestResult[side],result);
+                }
+                outputCard.body.push("[hr]");
+            }
+            let delta = highestResult[0] - highestResult[1];
             let remaining = ["All"];
             if (delta > 0) {
-                outputCard.body.push(nations[0] + " Wins!");
-                if (onlyIndividuals[0] === true) {
-                    outputCard.body.push("They can make a Rout Move away");
-                    outputCard.body.push("They are subject to Targetting Fire");
-                } else {
-                    remaining = CCLoser(sides[1],delta);
-                }
+                outputCard.body.push(state.FbF.nations[0] + " Wins!");
+
             } else if (delta < 0) {
-                outputCard.body.push(nations[1] + " Wins!");
-                if (onlyIndividuals[1] === true) {
-                    outputCard.body.push("They can make a Rout Move away");
-                    outputCard.body.push("They are subject to Targetting Fire");
-                } else {
-                    remaining = CCLoser(sides[0],Math.abs(delta));
-                }
+                outputCard.body.push(state.FbF.nations[1] + " Wins!");
+
             } else {
                 outputCard.body.push("The Combat ends in a Tie!");
                 remaining = ["Good"];
@@ -2553,9 +2536,12 @@ const Main = (() => {
                 ButtonInfo("Next Phase","!RunCC");
             }
             PrintCard();
+
         } else {
             NextPhase(true);
         }
+
+
     }
 
     const CCLoser = (elements,delta) => {
