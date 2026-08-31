@@ -2430,6 +2430,7 @@ const Main = (() => {
             if (group.length === 1) {continue};
             for (let j=0;j<group.length;j++) {
                 let el1 = Elements[group[j]];
+                if (el1.sectionID !== activeSectionID) {continue}
                 for (let k=0;k<group.length;k++) {
                     if (j===k) {continue};
                     let el2 = Elements[group[k]];
