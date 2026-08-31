@@ -2859,8 +2859,46 @@ _.each(group,ind => {
     }
 
     const Fire = (shooter,target,special) => {
-        //special may be opp fire ? how to figure targetted ?
+        //special may be "Opp" ? how to figure targetted ?
+        let losResult = LOS(shooter,target);
+        let weapon = shooter.weaponArray[0];
+        let minRange = weapon.effRange[0];
+        let maxRange = weapon.effRange[1];
+        let rangedDice = DeepCopy(weapon.rangedDice).split(",");
+        let bonusRange = 0;
+        _.each(rangedDice,extra =>  {
+            let bits = extra.split("d");
+            let num = bits[0] || 1;
+            let dice = bits[1];
+            for (let i=0;i<num;i++) {
+                let roll = randomInteger(dice);
+                bonusRange += roll;
+            }
+        })
         
+
+
+        let errorMsg = [];
+        if (losResult.los === false) {
+//add indirect here
+            errorMsg.push("Target is not in LOS");
+        }
+        if (losResult.distance < minRange) {
+            errorMsg.push("Target is Under Weapon's Min Range");
+        }
+
+
+//if distance > maxRange + bonusRange is not an error but a miss/wasted shot
+
+
+        if (ErrorMsg(errorMsg)) {
+            PrintCard();
+            return;
+        }
+
+
+
+
 
 
 
