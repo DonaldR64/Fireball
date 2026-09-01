@@ -335,10 +335,17 @@ const Main = (() => {
 
 
     function tokenMidPoints(tok) {
+        //sends back mid points of longer axis of a token
         let corners = tokenVertices(tok);
-        let pt1 = new Point((corners[0].x + corners[1].y)/2,(corners[0].y + corners[1].y)/2);
-        let pt2 = new Point((corners[3].x + corners[4].y)/2,(corners[3].y + corners[4].y)/2);
-        return [pt1,pt2];
+        let line = [];
+        if (tok.get("height") >= tok.get("width")) {
+            line.push(new Point((corners[0].x + corners[1].x)/2,(corners[0].y + corners[1].y)/2));
+            line.push(new Point((corners[2].x + corners[3].x)/2,(corners[2].y + corners[3].y)/2))
+        } else {
+            line.push(new Point((corners[1].x + corners[2].x)/2,(corners[1].y + corners[2].y)/2));
+            line.push(new Point((corners[3].x + corners[4].x)/2,(corners[3].y + corners[4].y)/2))
+        }
+        return line;
     }
 
     function GetAbsoluteControlPt(controlArray, center, w, h, rot, scaleX, scaleY) {
@@ -1569,10 +1576,7 @@ const Main = (() => {
                 let hexLabel = midPt.label();
                 //now run through that hexes neighbours and see if midPoint lies between the 2 hexes centres
                 let hex1 = HexMap[hexLabel];
-
-
-
-                
+                let line2 = tokenMidPoints(token);
                 if (hex1) {
                     let neighbourCubes = hex1.cube.neighbours();
                     for (let j=0;j<neighbourCubes.length;j++) {
@@ -1581,30 +1585,17 @@ const Main = (() => {
                         let hl2 = neighbourCubes[j].label();
                         let hex2 = HexMap[hl2];
                         if (!hex2) {continue}
-                        if (((midPt.x >= hex1.centre.x && midPt.x <= hex2.centre.x) || (midPt.x >= hex2.centre.x && midPt.x <= hex1.centre.x)) && ((midPt.y >= hex1.centre.y && midPt.y <= hex2.centre.y) || (midPt.y >= hex2.centre.y && midPt.y <= hex1.centre.y))) {
+                        let intersect = lineLine(line2[0],line2[1],hex1.centre,hex2.centre);
+                        if (intersect) {
                             hex1.edges[DIRECTIONS[j]] = name;
                             hex2.edges[DIRECTIONS[k]] = name;
                             break;
                         }
-
-
-
-
-
                     }
                 }
             }
-
-
-
         });
-        
-
-
-
-
-
-
+    
 
         let elapsed = Date.now()-start;
         log(`Terrain added in ${elapsed/1000} seconds`);
