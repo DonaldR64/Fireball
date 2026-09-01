@@ -171,16 +171,21 @@ const Main = (() => {
     //cover is 1 - soft, 2 - hard, blockLOS - # of hexes past that can be seen, height - stories
     const TerrainInfo = {
         "Trench": {cover: 2, conceal: true, blockLOS: false, height: 0},
-        "Bocage": {cover: 2, conceal: true, blockLOS: "1 Hex", height: 2},
         "Building 1 Storey": {cover: 2, conceal: true, blockLOS: "Past", height: 1},
         "Building 2 Storey": {cover: 2, conceal: true, blockLOS: "Past", height: 2},
         "Orchard": {cover: 1, conceal: "Infantry, Crewed Weapons", blockLOS: false, height: 2},
         "Woods": {cover: 1, conceal: true, blockLOS: "Past", height: 3},
-        "Wall": {cover: 'Wall', conceal: "Infantry, Crewed Weapons, 1 Hex", blockLOS: false, height: 0},
-        "Hedge": {cover: "Hedge", conceal: "Infantry, Crewed Weapons, 1 Hex", blockLOS: false, height: 0},
         "Fields": {cover: "Fields", conceal: "Infantry", blockLOS: false, height: 0},
+        "Gun Pit": {cover: 2, conceal: true, blockLOS: true, height: 0},
 
     }
+
+    const EdgeInfo = {
+        "Bocage": {cover: 2, conceal: true, blockLOS: "1 Hex", height: 2},
+        "Hedge": {cover: "Hedge", conceal: "Infantry, Crewed Weapons, 1 Hex", blockLOS: false, height: 0},
+        "Wall": {cover: 'Wall', conceal: "Infantry, Crewed Weapons, 1 Hex", blockLOS: false, height: 0},
+    }
+
 
 
     //defined by paths
@@ -711,15 +716,12 @@ const Main = (() => {
             this.cube = offset.toCube();
             this.label = offset.label();
             this.elevation = 0;
-            this.hill = false;
             this.terrainHeight = 0;
-            this.move = 0;
-            this.soft = false;
             this.cover = 0;
-            this.coverNote = "";
-            this.losLevel = 0;
+            this.blockLOS = false;
             this.concealment = false;
             this.edges = {};
+            this.terrainID = [];
             _.each(DIRECTIONS,a => {
                 this.edges[a] = "Open";
             });
@@ -1486,6 +1488,7 @@ const Main = (() => {
 
     const AddTerrain = () => {
         let start = Date.now();
+    /*
         //hills defined by lines, hedges and walls same
         let paths = findObjs({_pageid: Campaign().get("playerpageid"),_type: "pathv2",layer: "map",});
         _.each(paths,path => {
@@ -1531,18 +1534,25 @@ const Main = (() => {
                 }
             }
         });
+    */
         //Add Token Terrain, Building might be multihex
         let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
+        let zorder = pageInfo.page.get("_zorder");
+log(zorder)
+
+
         _.each(tokens,token => {
             let name = token.get("name") || " ";
             if (name.includes("Map")) {
                 return;
             }
             name = name.split("//")[0].trim();
+log(name)
             let terrain = TerrainInfo[name];
             if (terrain) {
+log(terrain)
                 let labels = [];
-                if (token.get("width") > 250 || token.get("height") > 210) {
+                if (token.get("width") > 120 || token.get("height") > 120) {
                     let vertices = tokenVertices(token);
                     labels = PolyHexes(vertices);
                 } else {
@@ -1553,14 +1563,13 @@ const Main = (() => {
                     let hex = HexMap[label];
                     if (hex) {
                         if (hex.terrain === "Open") {
-                            hex.terrain = terrain.name;
-                        }
-                        hex.terrainHeight = terrain.height;
-                        hex.losLevel = terrain.losLevel;
-                        hex.cover = terrain.cover;
-                        hex.move = terrain.move;
-                        hex.coverNote = terrain.coverNote || "";
-                        hex.soft = terrain.soft;
+                            hex.terrain = name;
+                        } 
+                        hex.terrainHeight = Math.max(terrain.height,hex.terrainHeight);
+                        hex.blockLOS = terrain.blockLOS;
+                        hex.cover = Math.max(terrain.cover,hex.cover);
+                        hex.concealment = (terrain.conceal === true) ? true:hex.concealment;
+                        hex.terrainID.push(token.id);
                     }
                 })
             }    
@@ -1701,6 +1710,13 @@ const Main = (() => {
                 outputCard.body.push(a + " Edge: " + EdgeInfo[hex.edges[a]].name);
             }
         })
+        let cover = ["No","Soft","Hard"];
+        outputCard.body.push("Terrain provides " + cover[hex.cover] + " Cover");
+        if (hex.concealment === true) {
+            outputCard.body.push("Terrain provides Concealment");
+        }
+
+
 
         PrintCard();
     }
