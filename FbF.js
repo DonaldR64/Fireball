@@ -173,17 +173,17 @@ const Main = (() => {
         "Trench": {cover: 2, conceal: true, blockLOS: false, height: 0},
         "Building 1 Storey": {cover: 2, conceal: true, blockLOS: "Past", height: 1},
         "Building 2 Storey": {cover: 2, conceal: true, blockLOS: "Past", height: 2},
-        "Orchard": {cover: 1, conceal: "Infantry, Crewed Weapons", blockLOS: false, height: 2},
+        "Orchard": {cover: 1, conceal: "Infantry & Crewed Weapons", blockLOS: false, height: 2},
         "Woods": {cover: 1, conceal: true, blockLOS: "Past", height: 3},
-        "Fields": {cover: "Fields", conceal: "Infantry", blockLOS: false, height: 0},
+        "Fields": {cover: "Soft Cover for Stationary Infantry", conceal: "Infantry", blockLOS: false, height: 0},
         "Gun Pit": {cover: 2, conceal: true, blockLOS: true, height: 0},
 
     }
 
     const EdgeInfo = {
-        "Bocage": {cover: 2, conceal: true, blockLOS: "1 Hex", height: 2},
-        "Hedge": {cover: "Hedge", conceal: "Infantry, Crewed Weapons, 1 Hex", blockLOS: false, height: 0},
-        "Wall": {cover: 'Wall', conceal: "Infantry, Crewed Weapons, 1 Hex", blockLOS: false, height: 0},
+        "Bocage": {cover: "Hard Cover for Infantry, Soft Cover for Vehicles", conceal: true, blockLOS: "1 Hex", height: 2},
+        "Hedge": {cover: "Soft Cover for Infantry against Hedge", conceal: "Infantry & Crewed Weapons", blockLOS: false, height: 0},
+        "Wall": {cover: 'Hard Cover for Elements against Wall', conceal: "Infantry & Crewed Weapons", blockLOS: false, height: 0},
     }
 
 
@@ -316,6 +316,30 @@ const Main = (() => {
       return corners
     }
 
+    const polyLine = (vertices,pt1,pt2) => {
+        //polygon / line collisions where typically pt1 is shooter and pt2 is target
+        let len = (vertices.length - 1);
+        let crossings = [];
+        //go through each vertices, plus the next to create a line for checking intersection
+        for (v=0;v<len;v++) {
+            let pt3 = vertices[v];
+            let pt4 = vertices[v+1];
+            let point = lineLine(pt1,pt2,pt3,pt4);
+            if (point) {
+                crossings.push(point);
+            }
+        }
+        return crossings;
+    }
+
+
+
+    function tokenMidPoints(tok) {
+        let corners = tokenVertices(tok);
+        let pt1 = new Point((corners[0].x + corners[1].y)/2,(corners[0].y + corners[1].y)/2);
+        let pt2 = new Point((corners[3].x + corners[4].y)/2,(corners[3].y + corners[4].y)/2);
+        return [pt1,pt2];
+    }
 
     function GetAbsoluteControlPt(controlArray, center, w, h, rot, scaleX, scaleY) {
         let len = controlArray.length;
@@ -1488,8 +1512,7 @@ const Main = (() => {
 
     const AddTerrain = () => {
         let start = Date.now();
-    /*
-        //hills defined by lines, hedges and walls same
+        //hills defined by lines
         let paths = findObjs({_pageid: Campaign().get("playerpageid"),_type: "pathv2",layer: "map",});
         _.each(paths,path => {
             let colour = path.get("stroke").toLowerCase();
@@ -1503,54 +1526,19 @@ const Main = (() => {
                     HexMap[label].hill = true;
                 })
             }
-            let edge = EdgeInfo[path.get("stroke").toLowerCase()];
-            if (edge) {
-                let vertices = translatePoly(path);
-                //work through pairs of vertices
-                for (let i=0;i<(vertices.length -1);i++) {
-                    let pt1 = vertices[i];
-                    let pt2 = vertices[i+1];
-                    let midPt = new Point((pt1.x + pt2.x)/2,(pt1.y + pt2.y)/2);
-                    //find nearest hex to midPt
-                    let hexLabel = midPt.label();
-                    //now run through that hexes neighbours and see what intersects with original line to identify the 2 neighbouring hexes
-                    let hex1 = HexMap[hexLabel];
-                    if (!hex1) {continue}
-                    let pt3 = hex1.centre;
-                    let neighbourCubes = hex1.cube.neighbours();
-                    for (let j=0;j<neighbourCubes.length;j++) {
-                        let k = j+3;
-                        if (k> 5) {k-=6};
-                        let hl2 = neighbourCubes[j].label();
-                        let hex2 = HexMap[hl2];
-                        if (!hex2) {continue}
-                        let pt4 = hex2.centre;
-                        let intersect = lineLine(pt1,pt2,pt3,pt4);
-                        if (intersect) {
-                            hex1.edges[DIRECTIONS[j]] = path.get("stroke").toLowerCase();
-                            hex2.edges[DIRECTIONS[k]] = path.get("stroke").toLowerCase();
-                        }
-                    }
-                }
-            }
         });
-    */
+
+    
         //Add Token Terrain, Building might be multihex
         let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
-        let zorder = pageInfo.page.get("_zorder");
-log(zorder)
-
-
         _.each(tokens,token => {
             let name = token.get("name") || " ";
             if (name.includes("Map")) {
                 return;
             }
             name = name.split("//")[0].trim();
-log(name)
             let terrain = TerrainInfo[name];
             if (terrain) {
-log(terrain)
                 let labels = [];
                 if (token.get("width") > 120 || token.get("height") > 120) {
                     let vertices = tokenVertices(token);
@@ -1572,7 +1560,43 @@ log(terrain)
                         hex.terrainID.push(token.id);
                     }
                 })
-            }    
+            }
+
+            let edgeTerrain = EdgeInfo[name];
+            if (edgeTerrain) {
+                let midPt = new Point(token.get("left"),token.get("top"));
+                //find nearest hex to midPt
+                let hexLabel = midPt.label();
+                //now run through that hexes neighbours and see if midPoint lies between the 2 hexes centres
+                let hex1 = HexMap[hexLabel];
+
+
+
+                
+                if (hex1) {
+                    let neighbourCubes = hex1.cube.neighbours();
+                    for (let j=0;j<neighbourCubes.length;j++) {
+                        let k = j+3;
+                        if (k> 5) {k-=6};
+                        let hl2 = neighbourCubes[j].label();
+                        let hex2 = HexMap[hl2];
+                        if (!hex2) {continue}
+                        if (((midPt.x >= hex1.centre.x && midPt.x <= hex2.centre.x) || (midPt.x >= hex2.centre.x && midPt.x <= hex1.centre.x)) && ((midPt.y >= hex1.centre.y && midPt.y <= hex2.centre.y) || (midPt.y >= hex2.centre.y && midPt.y <= hex1.centre.y))) {
+                            hex1.edges[DIRECTIONS[j]] = name;
+                            hex2.edges[DIRECTIONS[k]] = name;
+                            break;
+                        }
+
+
+
+
+
+                    }
+                }
+            }
+
+
+
         });
         
 
@@ -1705,16 +1729,41 @@ log(terrain)
         outputCard.body.push("Elevation: " + (hex.elevation * 30) + " feet");
         outputCard.body.push("Terrain: " + hex.terrain);
         outputCard.body.push("Terrain Height: " + (hex.terrainHeight * 30) + " feet");
+        let coverLevels = ["No","Soft","Hard"];
+        let cover;
+        if (isNaN(hex.cover)) {
+            outputCard.body.push("Terrain provides " + hex.cover);
+        } else {
+            cover = coverLevels[hex.cover];
+            outputCard.body.push("Terrain provides " + cover + " Cover");
+        }
+
+        if (hex.concealment !== false) {
+            let add = (hex.concealment === true) ? "":" for " + hex.concealment + " only";
+            outputCard.body.push("Terrain provides Concealment" + add);
+        }
+
+
+
+
+        let edgeTerrainTypes = [];
         _.each(DIRECTIONS,a => {
             if (hex.edges[a] !== "Open") {
-                outputCard.body.push(a + " Edge: " + EdgeInfo[hex.edges[a]].name);
+                outputCard.body.push(a + " Edge: " + hex.edges[a]);
+                if (edgeTerrainTypes.includes(hex.edges[a]) === false) {
+                    edgeTerrainTypes.push(hex.edges[a]);
+                }
             }
         })
-        let cover = ["No","Soft","Hard"];
-        outputCard.body.push("Terrain provides " + cover[hex.cover] + " Cover");
-        if (hex.concealment === true) {
-            outputCard.body.push("Terrain provides Concealment");
-        }
+        _.each(edgeTerrainTypes,edge => {
+                outputCard.body.push("[U]" + edge + "[/u]");
+                let edgeInfo = EdgeInfo[edge];
+                outputCard.body.push("If LOS Crosses, provides " + edgeInfo.cover);
+                if (edgeInfo.conceal !== false) {
+                    let add = (edgeInfo.conceal === true) ? "":" for " + edgeInfo.conceal + " only";
+                    outputCard.body.push("If LOS Crosses, provides Concealment" + add);
+                }
+        })
 
 
 
