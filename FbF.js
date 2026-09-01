@@ -164,16 +164,6 @@ const Main = (() => {
     };
 
 
-    const TerrainInfoOriignal = {
-        "Ploughed Field": {name: "Ploughed Field",height: 0,losLevel:0,cover: 0,move: 1},
-        "Tall Crops": {name: "Tall Crops",move: 1, soft: false, cover: 1, coverNote: "None if Moving", losLevel: 1, height: 0.2},
-        "Orchard": {name: "Orchard",move: 1, soft: false, cover: 1, losLevel: 1,height: 1},
-        "Muddy Ground": {name: "Muddy Ground",move: 1, soft: true, cover: 0, losLevel: 0, height: 0},
-        "Woods": {name: "Woods",move: 2, soft: false, cover: 1, losLevel: 2, height: 2},
-        "Craters": {name: "Craters",move: 1, soft: false, cover: 1, losLevel: 0, height: 0},
-        "Wood Building": {name: "Wood Building",move: 1, soft: false, cover: 1, losLevel: 2, height: 1},
-        "Stone Building": {name: "Stone Building",move: 1, soft: false, cover: 2, losLevel: 2, height: 1},
-    }
 
 
     //terrain that is single object
@@ -193,13 +183,15 @@ const Main = (() => {
     }
 
 
+    //defined by paths
+    const AreaInfo = {
+        "#ff9900": {name: "Gun Pit", cover: "Pit", conceal: "Infantry", blockLOS: "Past", height: 0},
 
-    
-    const EdgeInfo = {
-        "#5b0f00": {name: "Wall",type: "Minor", cover: 2, height: .2},        
-        "#274e13": {name: "Hedge",type: "Minor", cover: 1, height: .2},   
-        "#00ff00": {name: "Bocage",type: "Major", cover: 2, height: .5},  
+
+
+
     }
+
 
     //height is #, corresponds to 1 story per #
     const HillInfo = {
