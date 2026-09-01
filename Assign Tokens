@@ -1,0 +1,26 @@
+on("chat:message", function(msg) {
+    // Basic command trigger: !link-token
+    if (msg.type === "api" && msg.content === "!link-token") {
+        
+        // Ensure a token is selected on the map
+        if (!msg.selected || msg.selected.length === 0) {
+            sendChat("","No Selected");
+            return;
+        }
+        
+        let charObj = getObj("character", "-P0PoFkwRvK65EoU5Rzn"); 
+
+        if (!charObj) {
+            sendChat("","No Character")
+            return;
+        };
+
+        for (let i=0;i<msg.selected.length;i++) {
+            let token = getObj('graphic', msg.selected[i]._id);
+            token.set({
+                represents: charObj.id
+            });
+        }
+        sendChat("","Done")
+    }
+});

@@ -163,12 +163,8 @@ const Main = (() => {
 
     };
 
-    //cover: 0 = none, 1 = soft, 2 = hard, 3 = bunker
-    //move: 0 = open, 1 = broken, 2 = heavy going, 3 = impassable
-    //losLevel: 0 = no effect, 1 = lightly obstructs, 2 = fully obstructs => light means 2 hexes, full means only the edge hex
-    //height is X * 10 yards
-    //hills will be 10/20/30 yards
-    const TerrainInfo = {
+
+    const TerrainInfoOriignal = {
         "Ploughed Field": {name: "Ploughed Field",height: 0,losLevel:0,cover: 0,move: 1},
         "Tall Crops": {name: "Tall Crops",move: 1, soft: false, cover: 1, coverNote: "None if Moving", losLevel: 1, height: 0.2},
         "Orchard": {name: "Orchard",move: 1, soft: false, cover: 1, losLevel: 1,height: 1},
@@ -178,6 +174,26 @@ const Main = (() => {
         "Wood Building": {name: "Wood Building",move: 1, soft: false, cover: 1, losLevel: 2, height: 1},
         "Stone Building": {name: "Stone Building",move: 1, soft: false, cover: 2, losLevel: 2, height: 1},
     }
+
+
+    //terrain that is single object
+    //blockLOS - 
+    //cover is 1 - soft, 2 - hard, blockLOS - # of hexes past that can be seen, height - stories
+    const TerrainInfo = {
+        "Trench": {cover: 2, conceal: true, blockLOS: false, height: 0},
+        "Bocage": {cover: 2, conceal: true, blockLOS: "1 Hex", height: 2},
+        "Building 1 Storey": {cover: 2, conceal: true, blockLOS: "Past", height: 1},
+        "Building 2 Storey": {cover: 2, conceal: true, blockLOS: "Past", height: 2},
+        "Orchard": {cover: 1, conceal: "Infantry, Crewed Weapons", blockLOS: false, height: 2},
+        "Woods": {cover: 1, conceal: true, blockLOS: "Past", height: 3},
+        "Wall": {cover: 'Wall', conceal: "Infantry, Crewed Weapons, 1 Hex", blockLOS: false, height: 0},
+        "Hedge": {cover: "Hedge", conceal: "Infantry, Crewed Weapons, 1 Hex", blockLOS: false, height: 0},
+        "Fields": {cover: "Fields", conceal: "Infantry", blockLOS: false, height: 0},
+
+    }
+
+
+
     
     const EdgeInfo = {
         "#5b0f00": {name: "Wall",type: "Minor", cover: 2, height: .2},        
@@ -185,7 +201,7 @@ const Main = (() => {
         "#00ff00": {name: "Bocage",type: "Major", cover: 2, height: .5},  
     }
 
-    //height is #
+    //height is #, corresponds to 1 story per #
     const HillInfo = {
         "#000000": {name: "Hill 1"},
         "#666666": {name: "Hill 2"},
