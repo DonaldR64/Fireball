@@ -811,6 +811,7 @@ const Main = (() => {
                 rank = Ranks.indexOf(this.individual);
             }
             this.rank = rank;
+log(this.name)
 
             let weaponArray = [];
             for (let w=1;w<3;w++) {
@@ -823,7 +824,11 @@ const Main = (() => {
                 if (weff.length === 1) {
                     weff.unshift(0);
                 }
-                let wrangeddice = aa[pre + "rangeddice"];
+                let wrangeddice = aa[pre + "rangedice"]
+                if (wrangeddice) {
+                    wrangeddice = wrangeddice.split(",");
+                }
+
                 let wpen = parseInt(aa[pre + "pen"]) || "-";
                 let wai = aa[pre + "ai"];
                 wai = wai.split("/").map(e => parseInt(e));
@@ -831,14 +836,14 @@ const Main = (() => {
                 let weapon = {
                     name: wname,
                     effRange: weff, //an array of min/max
-                    rangedDice: wrangeddice,
+                    rangedDice: wrangeddice, //an array of dice
                     penetration: wpen,
                     antiInfantry: wai, //an array, white then red
                     notes: wnotes,
                 }
                 weaponArray.push(weapon);
             }
-
+log(weaponArray)
 
 
 
@@ -1176,7 +1181,7 @@ const Main = (() => {
 
         //oppfire
         if (element.weaponArray.length > 0) {
-            AddAbility("Opp Fire","!Actions;@{selected|token_id};Opp Fire;@{target}token_id}",element.charID);
+            AddAbility("Opp Fire","!Actions;@{selected|token_id};Opp Fire;@{target|token_id}",element.charID);
         }
         AddAbility("Run CC","!CloseCombat",element.charID);
 
@@ -1253,8 +1258,14 @@ const Main = (() => {
 
     const DisplayDice = (roll,nation,size) => {
         roll = roll.toString();
-        tablename = (!Nations[nation]) ? "Neutral":Nations[nation].dice
+        tablename = nation;
+        if (Nations[nation]) {
+            tablename = Nations[nation].dice
+        }
         let table = findObjs({type:'rollabletable', name: tablename})[0];
+        if (!table) {
+            table = findObjs({type:'rollabletable', name: "Neutral"})[0];
+        }
         let obj = findObjs({type:'tableitem', _rollabletableid: table.id, name: roll })[0];   
         if (!obj) {return "NA"}
         let avatar = obj.get('avatar');
@@ -2053,8 +2064,8 @@ const Main = (() => {
         let element = Elements[Tag[1]];
         let status = element.Status();
         let action = Tag[2];
-        let targetElement = Elements[Tag[2]] || "";
-
+        let targetElement = Elements[Tag[3]] || "";
+log(Tag)
         if (!element) {
             sendChat("","Not in Array");
             return;
@@ -2954,25 +2965,26 @@ _.each(group,ind => {
         element.rallied = true;
     }
 
-    const Fire = (shooter,target,special) => {
+    const Fire = (shooter,target,special = "Nil") => {
         //special may be "Opp" ? how to figure targetted ?
         let losResult = LOS(shooter,target);
         let weapon = shooter.weaponArray[0];
         let minRange = weapon.effRange[0];
-        let maxRange = weapon.effRange[1];
-        let rangedDice = DeepCopy(weapon.rangedDice).split(",");
+        let maxRange = weapon.effRange
+        let rangedDice = weapon.rangedDice
         let bonusRange = 0;
+
         _.each(rangedDice,extra =>  {
             let bits = extra.split("d");
             let num = bits[0] || 1;
-            let dice = bits[1];
+            let dice = parseInt(bits[1]);
             for (let i=0;i<num;i++) {
                 let roll = randomInteger(dice);
                 bonusRange += roll;
             }
         })
-        let totalRange = maxRange + bonusRange;
-        let cover = Math.max(losResult.cover,losResult,interCover);
+        let totalRange = parseInt(maxRange) + parseInt(bonusRange);
+        let cover = Math.max(losResult.cover,losResult.interCover);
 //mortars??
         let errorMsg = [];
         if (losResult.los === false) {
@@ -2990,22 +3002,12 @@ _.each(group,ind => {
             PrintCard();
             return;
         }
-        outputCard.body.push("Firing " + weapon.name + " out to " + totalRange);
+        outputCard.body.push("Firing " + weapon.name + " out to " + totalRange + " Hexes");
         if (losResult.distance > (maxRange + bonusRange)) {
             //if distance > maxRange + bonusRange is not an error but a miss/wasted shot
             outputCard.body.push("All Shots Miss due to Distance");
         } else {
             if (target.type.includes("Vehicle") === false) {
-                let drm = 0;
-                let drmTip = "";
-                if (losResult.distance <= bonusRange) {
-                    drmTip += "<br>Target within Range Dice +1";
-                    drm++;
-                }
-                if (cover >= 2) {
-                    drmTip += "<br>Target in Hard Cover -1";
-                    drm--;
-                }
                 let target;
                 let tip = "Target: ";
                 if (special === "Opp" && cover === 0) {
@@ -3015,8 +3017,15 @@ _.each(group,ind => {
                     target = 5;
                     tip += "5+";
                 }
-                tip += "<br>Total DRM: " + drm;
-                tip += drmTip;
+                let drm = 0;
+                if (losResult.distance <= bonusRange) {
+                    tip += "<br>Target within Range Dice +1";
+                    drm++;
+                }
+                if (cover >= 2) {
+                    tip += "<br>Target in Hard Cover -1";
+                    drm--;
+                }
 
                 let hits = 0;
 
@@ -3045,14 +3054,13 @@ _.each(group,ind => {
                 }
                 whiteRolls = whiteRolls.sort().reverse();
 
-
                 whiteDisplay = "";
                 _.each(whiteRolls,roll => {
-                    whiteDisplay += DisplayDice(roll,"White",18) + " "; 
+                    whiteDisplay += DisplayDice(roll,"White",24) + " "; 
                 })
                 redDisplay = "";
                 _.each(redRolls,roll => {
-                    redDisplay += DisplayDice(roll,"Red",18) + " "; 
+                    redDisplay += DisplayDice(roll,"Red",24) + " "; 
                 })
                 let line = '[Rolls: ](#" class="showtip" title="' + tip + ')';   
                 line += whiteDisplay + " / " + redDisplay;
