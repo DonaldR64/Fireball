@@ -176,7 +176,7 @@ const Main = (() => {
         "Orchard": {cover: 1, conceal: "Infantry", blockLOS: false, height: 2, interCover: 1},
         "Woods": {cover: 1, conceal: true, blockLOS: "Past", height: 3},
         "Fields": {cover: "Soft Cover for Stationary Infantry", conceal: "Infantry", blockLOS: false, height: 0, interCover: 0},
-        "Gun Pit": {cover: 2, conceal: true, blockLOS: "Past", height: .5},
+        "Gun Pit": {cover: 2, conceal: false, blockLOS: "Past", height: .5},
 
     }
 
@@ -1711,9 +1711,15 @@ const Main = (() => {
         if (element.Offmap()) {
             outputCard.body.push("Element is Off Map");
         }
-        outputCard.body.push("Elevation: " + (hex.elevation * 30) + " feet");
+        let s = hex.elevation === 1 ? " Storey":" Stories"
+        let elevation = hex.elevation === 0 ? "Ground Level":hex.elevation + s;
+
+        outputCard.body.push("Elevation: " + elevation);
         outputCard.body.push("Terrain: " + hex.terrain);
-        outputCard.body.push("Terrain Height: " + (hex.terrainHeight * 30) + " feet");
+        if (hex.terrainHeight > 0) {
+            s = hex.terrainHeight === 1? " Storey":" Stories"
+            outputCard.body.push("Terrain Height: " + hex.terrainHeight + s);
+        }
         let coverLevels = ["No","Soft","Hard"];
         let cover;
         if (isNaN(hex.cover)) {
@@ -2300,7 +2306,7 @@ const Main = (() => {
         SetupCard(shooter.name,"Line of Sight",shooter.nation);
 
         let losResult = LOS(shooter,target);
-        outputCard.body.push("Distance: " + losResult.distance + " hexes [" + losResult.distance * 30 + " feet]");
+        outputCard.body.push("Distance: " + losResult.distance + " hexes");
         outputCard.body.push("[hr]");
         if (losResult.los === false) {
             outputCard.body.push("No LOS due to " + losResult.losReason + " at " + losResult.blockedHexLabel);
@@ -2391,9 +2397,11 @@ const Main = (() => {
                 }
 
                 //Blocking Terrain or Cover Terrain
+    
                 pt3 = new Point(i+1,0);
                 pt4 = new Point(i+1,(interHex.elevation + interHex.terrainHeight));
                 line1 = lineLine(pt1,pt2,pt3,pt4); //intersection
+            
                 if (line1) {
                     interCover[side] = Math.max(interCover[side],interHex.interCover);
                     if (interHex.blockLOS === "Past"){
@@ -2963,7 +2971,7 @@ _.each(group,ind => {
                 bonusRange += roll;
             }
         })
-        
+        let totalRange = maxRange + bonusRange;
 
 
         let errorMsg = [];
@@ -2977,23 +2985,43 @@ _.each(group,ind => {
 
 
 //if distance > maxRange + bonusRange is not an error but a miss/wasted shot
-
-
+        SetupCard(shooter.name,"Weapons Fire",shooter.nation);
         if (ErrorMsg(errorMsg)) {
             PrintCard();
             return;
+        }
+        outputCard.body.push("Firing " + weapon.name + " out to " + totalRange);
+        if (losResult.distance > (maxRange + bonusRange)) {
+            outputCard.body.push("Fire Misses");
+        } else {
+            if (target.type.includes("Vehicle") === false) {
+
+
+
+
+
+
+            } else {
+
+
+
+
+            }
+
+
         }
 
 
 
 
+        if (special === "Opp") {
+            shooter.token.set(SM.oppfire,true);
+        } else {
+            shooter.fired = true;
+        }
+        
+        shooter.token.set("tint_color","transparent");
 
-
-
-
-
-
-        //mark oppfired shooter with SM.oppfire
         //hidden shooter revealed
     }
 
