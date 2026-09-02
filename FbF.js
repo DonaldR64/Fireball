@@ -164,37 +164,26 @@ const Main = (() => {
     };
 
 
-
+    let Infantry = ["Infantry Squad","Infantry Team","Weapons Team","Individual"];
 
     //terrain that is single object
     //blockLOS - 
     //cover is 1 - soft, 2 - hard, blockLOS - # of hexes past that can be seen, height - stories
     const TerrainInfo = {
-        "Trench": {cover: 2, conceal: true, blockLOS: false, height: 0},
+        "Trench": {cover: 2, conceal: true, blockLOS: false, height: 0,interCover: 0},
         "Building 1 Storey": {cover: 2, conceal: true, blockLOS: "Past", height: 1},
         "Building 2 Storey": {cover: 2, conceal: true, blockLOS: "Past", height: 2},
-        "Orchard": {cover: 1, conceal: "Infantry & Crewed Weapons", blockLOS: false, height: 2},
+        "Orchard": {cover: 1, conceal: "Infantry", blockLOS: false, height: 2, interCover: 1},
         "Woods": {cover: 1, conceal: true, blockLOS: "Past", height: 3},
-        "Fields": {cover: "Soft Cover for Stationary Infantry", conceal: "Infantry", blockLOS: false, height: 0},
-        "Gun Pit": {cover: 2, conceal: true, blockLOS: true, height: 0},
+        "Fields": {cover: "Soft Cover for Stationary Infantry", conceal: "Infantry", blockLOS: false, height: 0, interCover: 0},
+        "Gun Pit": {cover: 2, conceal: true, blockLOS: "Past", height: 0},
 
     }
 
     const EdgeInfo = {
-        "Bocage": {cover: "Hard Cover for Infantry, Soft Cover for Vehicles", conceal: true, blockLOS: "1 Hex", height: 2},
+        "Bocage": {cover: "Hard Cover for Infantry/Crewed Weapons, Soft Cover for Vehicles", conceal: true, blockLOS: "1 Hex", height: 2},
         "Hedge": {cover: "Soft Cover for Infantry against Hedge", conceal: "Infantry & Crewed Weapons", blockLOS: false, height: 0},
         "Wall": {cover: 'Hard Cover for Elements against Wall', conceal: "Infantry & Crewed Weapons", blockLOS: false, height: 0},
-    }
-
-
-
-    //defined by paths
-    const AreaInfo = {
-        "#ff9900": {name: "Gun Pit", cover: "Pit", conceal: "Infantry", blockLOS: "Past", height: 0},
-
-
-
-
     }
 
 
@@ -749,10 +738,11 @@ const Main = (() => {
             this.elevation = 0;
             this.terrainHeight = 0;
             this.cover = 0;
+            this.interCover = 0;
             this.blockLOS = false;
             this.concealment = false;
             this.edges = {};
-            this.terrainID = [];
+            this.terrainID = "";
             _.each(DIRECTIONS,a => {
                 this.edges[a] = "Open";
             });
@@ -1562,9 +1552,13 @@ const Main = (() => {
                         } 
                         hex.terrainHeight = Math.max(terrain.height,hex.terrainHeight);
                         hex.blockLOS = terrain.blockLOS;
+                        let ic = terrain.interCover || 0;
+                        hex.interCover = Math.max(ic, hex.interCover);
                         hex.cover = Math.max(terrain.cover,hex.cover);
                         hex.concealment = (terrain.conceal === true) ? true:hex.concealment;
-                        hex.terrainID.push(token.id);
+                        if (terrain.blockLOS === "Past") {
+                            hex.terrainID = token.id;
+                        }
                     }
                 })
             }
@@ -2330,7 +2324,9 @@ const Main = (() => {
         let distance = shooter.Distance(target);
       
         let shooterHeight = shooterHex.elevation;
+//add in 2nd stories here
         let targetHeight = targetHex.elevation;
+//add in 2nd stories here
 
         let pt1 = new Point(0,shooterHeight);
         let pt2 = new Point(distance,targetHeight);
@@ -2351,8 +2347,7 @@ const Main = (() => {
         let blockedHexLabels = ["",""]
 
         for (let side=0;side<2;side++) {
-            let losLevel = 0;
-            let minorObs = 0;
+            let lastTerrainID = shooterHex.terrainID;
             for (let i=0;i<len;i++) {
                 let interHex = HexMap[labels[side][i]];
                 //Hills
@@ -2367,17 +2362,17 @@ const Main = (() => {
                 //Intervening Units
                 if (interHex.tokenIDs.length > 0 && interHex.label !== targetHex.label) {
                     let element2 = Elements[interHex.tokenIDs[0]];
-                    if (element2 && blockers.includes(element2.type)) {
-                        let h = .3
-                        pt3 = new Point(i+1,0);
-                        pt4 = new Point(i+1,(interHex.elevation + h));
-                        line1 = lineLine(pt1,pt2,pt3,pt4); //intersection
-                        if (line1) {
-                            los[side] = false;
-                            losReason[side] = element2.name;
-                            blockedHexLabels[side] = interHex.label;
-                            break;
-                        }
+                    if (shooter.type.includes("Vehicle") && element2.includes("Vehicle")) {
+                        los[side] = false;
+                        losReason[side] = element2.name;
+                        blockedHexLabels[side] = interHex.label;
+                        break;
+                    }
+                    if ((shooter.type.includes("Infantry") || shooter.type.includes("Weapon") || shooter.type === "Individual") && element2.type !== "Individual") {
+                        los[side] = false;
+                        losReason[side] = element2.name;
+                        blockedHexLabels[side] = interHex.label;
+                        break;
                     }
                 }
                 //Blocking Terrain or Cover Terrain
@@ -2385,41 +2380,42 @@ const Main = (() => {
                 pt4 = new Point(i+1,(interHex.elevation + interHex.terrainHeight));
                 line1 = lineLine(pt1,pt2,pt3,pt4); //intersection
                 if (line1) {
-                    losLevel += interHex.losLevel;
-                    if (losLevel > 1 && interHex.label !== targetHex.label) {
+                    interCover[side] = Math.max(interCover[side],interHex.interCover);
+                    if (blockLOS === "Past" && lastTerrainID !== interHex.terrainID) {
                         los[side] = false;
-                        losReason[side] = "Terrain";
+                        losReason[side] = interHex.terrain;
                         blockedHexLabels[side] = interHex.label;
                         break;
                     }
-                    interCover[side] = Math.max(interCover[side],interHex.cover);
                 }
                 //edges
                 if (i > 1) {
                     let dir = HexMap[labels[side][i-1]].cube.whatDirection(interHex.cube)
                     let edge = HexMap[labels[side][i-1]].edges[dir];
                     if (edge !== "Open") {
-                        let obstacle = EdgeInfo[edge];
-                        if (obstacle.type === "Minor") {
-                            minorObs++;
-                            if (minorObs > 3) {
-                                los[side] = false;
-                                losReason[side] = obstacle.name;
-                                blockedHexLabels[side] = interHex.label;
-                                break;
-                            }
-                            interCover[side] = Math.max(interCover[side],obstacle.cover);
-                        } else if (obstacle.type === "Major") {
+                        let edgeInfo = EdgeInfo[edge];
+                        if (edgeInfo.blockLOS && i < (len-2)) {
                             los[side] = false;
-                            losReason[side] = obstacle.name;
+                            losReason[side] = edge;
                             blockedHexLabels[side] = interHex.label;
                             break;
                         }
+                        if (i === len-2) {
+                            if (edgeInfo.cover.includes("Hard Cover for Infantry/Crewed Weapons") && target.type.includes("Vehicle") === false) {
+                                interCover[side] = 2;
+                            }
+                            if (edgeInfo.cover.includes("Soft Cover for Infantry") && target.type.includes("Vehicle") === false) {
+                                interCover[side] = 1;
+                            }
+                            if (edgeInfo.cover === 'Hard Cover for Elements against Wall') {
+                                interCover[side] = 2;
+                            }
+                            if (edgeInfo.cover.includes("Soft Cover for Vehicles")) {
+                                interCover[side] = 1;
+                            }
+                        }
                     }
                 }
-
-
-
             }
         }
 
@@ -2451,13 +2447,23 @@ const Main = (() => {
             interCoverFinal = interCover[0];
         }
 
+        let cover = targetHex.cover;
+        if (isNaN(cover)) {
+            
+            if (cover === "Soft Cover for Stationary Infantry" && Infantry.includes(target.type) && target.token.get(SM.moved) === false) {
+                cover = 1;
+            } else {cover = 0}
+        }
+
+
 
         let result = {
             los: finalLOS,
             losReason: finalLOSReason,
             blockedHexLabel: finalBlockedHexLabel,
             distance: distance,
-            cover: interCoverFinal,
+            interCover: interCoverFinal,
+            cover: cover,
             //shooterArcs: shooter.Arcs(target),
             //targetArcs: target.Arcs(shooter),
         }
