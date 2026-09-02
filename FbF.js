@@ -176,7 +176,7 @@ const Main = (() => {
         "Orchard": {cover: 1, conceal: "Infantry", blockLOS: false, height: 2, interCover: 1},
         "Woods": {cover: 1, conceal: true, blockLOS: "Past", height: 3},
         "Fields": {cover: "Soft Cover for Stationary Infantry", conceal: "Infantry", blockLOS: false, height: 0, interCover: 0},
-        "Gun Pit": {cover: 2, conceal: true, blockLOS: "Past", height: 0},
+        "Gun Pit": {cover: 2, conceal: true, blockLOS: "Past", height: .5},
 
     }
 
@@ -2345,18 +2345,21 @@ const Main = (() => {
         let losReason = ["",""];
         let blockedHexLabels = ["",""]
 
+
         for (let side=0;side<2;side++) {
+            let lastTerrainID;
+            let lastTerrain = shooterHex.terrain;
+            let lastLabel = shooterHex.label;
             for (let i=0;i<len;i++) {
-                let lastTerrainID;
-                let lastTerrain = shooterHex.terrain;
                 let interHex = HexMap[labels[side][i]];
 log(i + ": " + interHex.label + ": " + interHex.terrain)
-log(interHex.terrainID)
+log("Current: " + interHex.terrainID)
+log("Last: " + lastTerrainID)
 
                 if (lastTerrainID && lastTerrainID !== interHex.terrainID) {
                     los[side] = false;
                     losReason[side] = lastTerrain;
-                    blockedHexLabels[side] = HexMap[labels[side][i-1]].label;
+                    blockedHexLabels[side] = lastLabel;
                     break;   
                 }
 
@@ -2391,11 +2394,12 @@ log(interHex.terrainID)
                 pt3 = new Point(i+1,0);
                 pt4 = new Point(i+1,(interHex.elevation + interHex.terrainHeight));
                 line1 = lineLine(pt1,pt2,pt3,pt4); //intersection
-log(line1)
                 if (line1) {
                     interCover[side] = Math.max(interCover[side],interHex.interCover);
-                    if (blockLOS === "Past"){
-                        lastTerrainID = interHex.terrainID;
+                    if (interHex.blockLOS === "Past"){
+                        if (interHex.terrainID !== shooterHex.terrainID) {
+                            lastTerrainID = interHex.terrainID;
+                        }
                     } 
                 }
 
@@ -2427,6 +2431,9 @@ log(line1)
                         }
                     }
                 }
+
+                lastTerrain = interHex.terrain;
+                lastLabel = interHex.label;
             }
         }
 
