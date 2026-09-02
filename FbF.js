@@ -2306,6 +2306,7 @@ const Main = (() => {
             outputCard.body.push("No LOS due to " + losResult.losReason + " at " + losResult.blockedHexLabel);
         } else {
             coverLevel = [" No "," Soft "," Hard "," Bunker "];
+            let cover = Math.max(losResult.cover,losResult.interCover);
             outputCard.body.push("Target has" + coverLevel[losResult.cover] + "Cover");
         }
 
