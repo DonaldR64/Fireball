@@ -2324,10 +2324,13 @@ const Main = (() => {
         let distance = shooter.Distance(target);
       
         let shooterHeight = shooterHex.elevation;
-//add in 2nd stories here
+        if (shooterHex.terrain.includes("2 Storey") && Infantry.includes(shooter.type)) {
+            shooterHeight += 1;
+        }
         let targetHeight = targetHex.elevation;
-//add in 2nd stories here
-
+        if (targetHex.terrain.includes("2 Storey") && Infantry.includes(target.type)) {
+            targetHeight += 1;
+        }
         let pt1 = new Point(0,shooterHeight);
         let pt2 = new Point(distance,targetHeight);
         let pt3,pt4,line1;
@@ -2352,9 +2355,6 @@ const Main = (() => {
             let lastLabel = shooterHex.label;
             for (let i=0;i<len;i++) {
                 let interHex = HexMap[labels[side][i]];
-log(i + ": " + interHex.label + ": " + interHex.terrain)
-log("Current: " + interHex.terrainID)
-log("Last: " + lastTerrainID)
 
                 if (lastTerrainID && lastTerrainID !== interHex.terrainID) {
                     los[side] = false;
