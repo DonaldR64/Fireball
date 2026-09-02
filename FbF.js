@@ -2972,8 +2972,8 @@ _.each(group,ind => {
             }
         })
         let totalRange = maxRange + bonusRange;
-
-
+        let cover = Math.max(losResult.cover,losResult,interCover);
+//mortars??
         let errorMsg = [];
         if (losResult.los === false) {
 //add indirect here
@@ -2984,7 +2984,7 @@ _.each(group,ind => {
         }
 
 
-//if distance > maxRange + bonusRange is not an error but a miss/wasted shot
+
         SetupCard(shooter.name,"Weapons Fire",shooter.nation);
         if (ErrorMsg(errorMsg)) {
             PrintCard();
@@ -2992,9 +2992,89 @@ _.each(group,ind => {
         }
         outputCard.body.push("Firing " + weapon.name + " out to " + totalRange);
         if (losResult.distance > (maxRange + bonusRange)) {
-            outputCard.body.push("Fire Misses");
+            //if distance > maxRange + bonusRange is not an error but a miss/wasted shot
+            outputCard.body.push("All Shots Miss due to Distance");
         } else {
             if (target.type.includes("Vehicle") === false) {
+                let drm = 0;
+                let drmTip = "";
+                if (losResult.distance <= bonusRange) {
+                    drmTip += "<br>Target within Range Dice +1";
+                    drm++;
+                }
+                if (cover >= 2) {
+                    drmTip += "<br>Target in Hard Cover -1";
+                    drm--;
+                }
+                let target;
+                let tip = "Target: ";
+                if (special === "Opp" && cover === 0) {
+                    target = 4;
+                    tip += "4+";
+                } else {
+                    target = 5;
+                    tip += "5+";
+                }
+                tip += "<br>Total DRM: " + drm;
+                tip += drmTip;
+
+                let hits = 0;
+
+                let redRolls = [];
+                let redDice = weapon.antiInfantry[1];
+                for (let i=0;i<redDice;i++) {
+                    let roll = randomInteger(6);
+                    redRolls.push(roll);
+                    if (roll === 6) {
+                        hits++;
+                    }
+                }
+                redRolls = redRolls.sort().reverse();
+
+                let whiteRolls = [];
+                let whiteDice = weapon.antiInfantry[0];
+                let redDice4 = (weapon.notes.includes("4+ on Red") && redRolls.some(num => num < 4)) ? false:true;
+
+                for (let i=0;i<whiteDice;i++) {
+                    let roll = randomInteger(6);
+                    roll += drm;
+                    whiteRolls.push(roll);
+                    if (redDice4 && roll >= target) {
+                        hits++;
+                    }
+                }
+                whiteRolls = whiteRolls.sort().reverse();
+
+
+                whiteDisplay = "";
+                _.each(whiteRolls,roll => {
+                    whiteDisplay += DisplayDice(roll,"White",18) + " "; 
+                })
+                redDisplay = "";
+                _.each(redRolls,roll => {
+                    redDisplay += DisplayDice(roll,"Red",18) + " "; 
+                })
+                let line = '[Rolls: ](#" class="showtip" title="' + tip + ')';   
+                line += whiteDisplay + " / " + redDisplay;
+                outputCard.body.push(line);
+                outputCard.body.push("[hr]");
+                if (hits === 0) {
+                    outputCard.body.push("All Shots Miss");
+                } else {
+                    let s = hits === 1 ? "":"s";
+                    outputCard.body.push("The Target(s) take " + hit + " Hit" + s);
+
+
+
+
+
+                }
+
+
+
+
+
+
 
 
 
@@ -3011,7 +3091,7 @@ _.each(group,ind => {
 
         }
 
-
+        PrintCard();
 
 
         if (special === "Opp") {
@@ -3019,7 +3099,7 @@ _.each(group,ind => {
         } else {
             shooter.fired = true;
         }
-        
+
         shooter.token.set("tint_color","transparent");
 
         //hidden shooter revealed
