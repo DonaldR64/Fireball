@@ -3037,7 +3037,7 @@ _.each(group,ind => {
 
                 for (let i=0;i<whiteDice;i++) {
                     let roll = randomInteger(6);
-                    roll += drm;
+                    roll = Math.max(1,Math.min(roll + drm,6));
                     whiteRolls.push(roll);
                     if (redDice4 && roll >= target) {
                         hits++;
