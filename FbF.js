@@ -1929,7 +1929,7 @@ log(weaponArray)
             _.each(Elements, element => {
                 if (element.name.includes("Sniper's Nest")) {
                     element.token.set({
-                        layer: map,
+                        layer: "map",
                         tint_color: "transparent",
                     })
                     let hex = HexMap[element.hexLabel];
@@ -2228,7 +2228,7 @@ log(Tag)
             errorMsg.push("Suppressed Units may not Opp Fire");
         }
 
-        if (action.includes("Fire") && shooter.individual.includes("Sniper") && elementHex.terrain.includes("Sniper") === false) {
+        if (action.includes("Fire") && element.individual.includes("Sniper") && elementHex.terrain.includes("Sniper") === false) {
             errorMsg.push("Sniper can only Fire from one of his Prepared Nests");
         }
 
@@ -2785,6 +2785,9 @@ _.each(group,ind => {
             for (let i=0;i<keys.length;i++) {
                 let key = keys[i];
                 if (key === current) {continue};
+                if (Elements[key].type === "Marker" || Elements[key].type === "Initiative Token") {
+                    continue;
+                }
                 let d = Elements[key].Distance(Elements[current]);
                 if (d < 2) {
                     neighbours.push(key);
@@ -2875,7 +2878,20 @@ _.each(group,ind => {
             let refElement = Elements[group[0]];
             let groupLetter = "";
 
-            if (refElement.player < 2 && refElement.type !== "Initiative Token" && refElement.type !== "Marker") {
+            if (refElement.type === "Marker") {
+                let info = {
+                    id: element.id,
+                    startLoc: element.hexLabel,
+                }
+                state.FbF.markers.push(info);
+                //DuplicateElement(element);
+                continue;
+            }
+
+            if (refElement.type === "Initiative Token") {
+                continue;
+            }
+            if (refElement.player < 2) {
                 elementMarker = Nations[refElement.nation].elementmarkers[sectionMarkers[refElement.player]];
                 groupLetter = rowLabels[sectionMarkers[refElement.player]];
                 state.FbF.sectionMarkers[sectionID] = elementMarker;
@@ -2897,8 +2913,8 @@ _.each(group,ind => {
                     num++;
                     name += " " + groupLetter + "/" + num;
                 }
-                let a1c = (element.type === "Marker" || element.type === "Initiative Token") ? "":"#00ff00";
-                let tint = (element.type === "Marker" || element.type === "Initiative Token") ? "transparent":"#000000";
+                let a1c = "#00ff00";
+                let tint = "#000000";
 
 
                 element.token.set({
@@ -2925,15 +2941,6 @@ _.each(group,ind => {
 
                 state.FbF.sectionIDs[element.id] = sectionID;
                 AddAbilities(element);
-
-                if (element.type === "Marker") {
-                    let info = {
-                        id: element.id,
-                        startLoc: element.hexLabel,
-                    }
-                    state.FbF.markers.push(info);
-                    DuplicateElement(element);
-                }
             }
             if (elementMarker !== "None") {
                 sectionMarkers[refElement.player]++;
@@ -3082,10 +3089,10 @@ _.each(group,ind => {
                 let target;
                 let tip = "Target: ";
                 if (special === "Opp" && cover === 0) {
-                    target = 4;
+                    rollTarget = 4;
                     tip += "4+";
                 } else {
-                    target = 5;
+                    rollTarget = 5;
                     tip += "5+";
                 }
                 let drm = 0;
@@ -3114,12 +3121,13 @@ _.each(group,ind => {
                 let whiteRolls = [];
                 let whiteDice = weapon.antiInfantry[0];
                 let redDice4 = (weapon.notes.includes("4+ on Red") && redRolls.some(num => num < 4)) ? false:true;
+                let redDiceDisplay = (weapon.notes.includes("4+ on Red")) ? " vs. 4+":"";
 
                 for (let i=0;i<whiteDice;i++) {
                     let roll = randomInteger(6);
                     roll = Math.max(1,Math.min(roll + drm,6));
                     whiteRolls.push(roll);
-                    if (redDice4 && roll >= target) {
+                    if (redDice4 && roll >= rollTarget) {
                         hits++;
                     }
                 }
@@ -3134,7 +3142,7 @@ _.each(group,ind => {
                     redDisplay += DisplayDice(roll,"Red",24) + " "; 
                 })
                 let line = '[Rolls: ](#" class="showtip" title="' + tip + ')';   
-                line += whiteDisplay + " / " + redDisplay;
+                line += whiteDisplay + " vs. " + rollTarget + "+ / " + redDisplay + redDiceDisplay;
                 outputCard.body.push(line);
                 outputCard.body.push("[hr]");
                 if (hits === 0) {
