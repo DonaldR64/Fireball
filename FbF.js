@@ -1072,13 +1072,16 @@ log(weaponArray)
         Leader() {
             //returns highest adjacent leader with rank > this
             //if platoon leader only if is in same section/sectionID
+            //if in an area, leader has to be in same area ie same building etc
             let leader;
             let leaderRank=0;
+            let terrainID = HexMap[this.hexLabel].terrainID || "None";
             _.each(Elements,element => {
                 if (element.nation === this.nation && element.leader === true && element.id !== this.id && element.rank > this.rank && element.Status() !== "Broken") {
                     if (element.rank > 1 || (element.rank === 1 && element.sectionID === this.sectionID)) {
                         let d = element.Distance(this);
-                        if (d < 2) {
+                        let terrainID2 = HexMap[element.hexLabel].terrainID || "None";
+                        if (d < 2 && terrainID === terrainID2) {
                             if (leaderRank < element.rank) {
                                 leader = element;
                                 leaderRank = element.rank;
@@ -3137,13 +3140,32 @@ _.each(group,ind => {
                 if (hits === 0) {
                     outputCard.body.push("All Shots Miss");
                 } else {
+                    let targets = [target];
+                    if (target.type !== "Individual") {
+                        let leader = target.Leader();
+                        if (shooter.individual === "Sniper") {
+                            targets = [leader];
+                        } else {
+                            targets.push(leader);
+                        }
+                    };
+                    if (HexMap[target.hexLabel].terrain.includes("Building")) {
+                        let terrainID = HexMap[target.hexLabel].terrainID;
+                        _.each(Elements,element => {
+                            let hex = HexMap[element.hexLabel];
+                            if (hex.terrainID === terrainID) {
+                                targets.push(element);
+                            }
+                        })
+                    }
+
                     let s = hits === 1 ? "":"s";
-                    outputCard.body.push("The Target(s) take " + hits + " Hit" + s);
-
-
-
-
-
+                    let s2 = targets.length === 1 ? "The Target takes ":"The Targets take ";
+                    outputCard.body.push(s2 + hits + " Hit" + s);
+                    let max = (shooter.individual === "Sniper") ? 1:hits;
+                    _.each(targets,target => {
+                        target.Morale("Firing",hits,max);
+                    })
                 }
 
 
