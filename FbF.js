@@ -2970,20 +2970,31 @@ _.each(group,ind => {
         let losResult = LOS(shooter,target);
         let weapon = shooter.weaponArray[0];
         let minRange = weapon.effRange[0];
-        let maxRange = weapon.effRange
+        let maxRange = weapon.effRange[1];
         let rangedDice = weapon.rangedDice
         let bonusRange = 0;
 
+        let rangedRolls = [];
         _.each(rangedDice,extra =>  {
             let bits = extra.split("d");
             let num = bits[0] || 1;
             let dice = parseInt(bits[1]);
             for (let i=0;i<num;i++) {
                 let roll = randomInteger(dice);
+                rangedRolls.push(roll);
                 bonusRange += roll;
             }
         })
+        let rangedDiceDisplay = rangedDice.toString().replaceAll(","," + ");
+
+        rangedRolls.sort().reverse();
+        rangedRolls.toString().replaceAll(","," + ");
+        let rangedTip = "Effective Range: " + maxRange;
+        rangedTip += "<br>Range Dice: " + rangedDiceDisplay;
+        rangedTip += "<br>Rolls: " + rangedRolls;
         let totalRange = parseInt(maxRange) + parseInt(bonusRange);
+        totalRange = '[' + totalRange + '](#" class="showtip" title="' + rangedTip + ')';   
+
         let cover = Math.max(losResult.cover,losResult.interCover);
 //mortars??
         let errorMsg = [];
@@ -3070,7 +3081,7 @@ _.each(group,ind => {
                     outputCard.body.push("All Shots Miss");
                 } else {
                     let s = hits === 1 ? "":"s";
-                    outputCard.body.push("The Target(s) take " + hit + " Hit" + s);
+                    outputCard.body.push("The Target(s) take " + hits + " Hit" + s);
 
 
 
@@ -3099,7 +3110,6 @@ _.each(group,ind => {
 
         }
 
-        PrintCard();
 
 
         if (special === "Opp") {
