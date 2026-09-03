@@ -1153,7 +1153,7 @@ log(weaponArray)
 
 
         if (element.type !== "Initiative Token" && element.type !== "Marker") {
-            AddAbility("Info","!TokenInfo",element.charID);
+            //AddAbility("Info","!TokenInfo",element.charID);
             AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",element.charID);
         }
 
@@ -1164,45 +1164,42 @@ log(weaponArray)
         }
 
 
-        let actions = "!Actions;@{selected|token_id};?{Action";
+        let actions = "!Actions;@{selected|token_id};";
 
         if ((element.leader === true && element.rank > 1) || element.individual === "Forward Observer") {
-            actions += "|Call Artillery,Call Artillery";
+            AddAbility("Call Artillery",actions + "Call Artillery",element.charID);
+        }
+
+
+//amend for vehicles
+        if (element.move > 0) {
+            let a = "Move";
+            if (element.type.includes("Squad") || element.type === "Infantry Team" || element.rank > 0) {
+                a = "?{Move|Normal Move,Move|Charge into Close Combat,Charge}";
+            }
+            AddAbility("Move",actions + a,element.charID);
         }
 
         if (element.type.includes("Squad") || element.type === "Infantry Team" || element.rank > 0) {
-            actions += "|Charge!,Charge";
+            AddAbility("0: Close Combat","!CloseCombat",element.charID);
         }
 
-        if (element.weaponArray.length > 0) {
-            actions += "|Fire,Fire;&#64;&#123;target&#124;token_id&#125;"
+
+        for (let i=0;i<element.weaponArray.length;i++) {
+            let weapon = element.weaponArray[i];
+            let j = (i+1)
+            AddAbility((i+1) + ": " + weapon.name,actions + "Fire;" + i + ";@{target|token_id}",element.charID);
         }
 
-        if (element.move > 0) {
-            actions += "|Move,Move";
-        }
+        AddAbility("Rally",actions + "Rally",element.charID);
 
-        actions += "|Rally,Rally";
 
         if (element.type === "Weapons Team" || element.type === "Vehicle" || element.type === "Soft Vehicle") {
-            actions += "|Reload,Reload";
+            AddAbility("Reload",actions + "Reload",element.charID);
         }
         if (element.recon === true || element.type === "Individual" || element.leader === true) {
-            actions += "|Spot,Spot";
+            AddAbility("Spot",actions + "Spot",element.charID);
         }
-
-        actions += "}";
-        log(actions)
-
-        AddAbility("Action",actions,element.charID);
-
-
-        //oppfire
-        if (element.weaponArray.length > 0) {
-            AddAbility("Opp Fire","!Actions;@{selected|token_id};Opp Fire;@{target|token_id}",element.charID);
-        }
-        AddAbility("Run CC","!CloseCombat",element.charID);
-
 
 
     }
@@ -1735,6 +1732,10 @@ log(weaponArray)
 
 
     const TokenInfo = (msg) => {
+        if (!msg.selected) {
+            sendChat("","Select a Token First");
+            return;
+        }
         let id = Lookup(msg.selected[0]._id);
         let element = Elements[id];
         if (!element) {
@@ -2113,11 +2114,11 @@ log(weaponArray)
 
     const Actions = (msg) => {
         let Tag = msg.content.split(";");
-        let element = Elements[Tag[1]];
+        let element = Elements[Lookup(Tag[1])];
         let status = element.Status();
         let action = Tag[2];
-        let targetElement = Elements[Tag[3]] || "";
-log(Tag)
+        let weaponNum = Tag[3] || "";
+        let targetElement = Elements[Lookup(Tag[4])] || "";
         if (!element) {
             sendChat("","Not in Array");
             return;
@@ -2140,29 +2141,55 @@ log(Tag)
                 }
             }
         }
-        //check if target in CC if fire/oppfire
+        //build target array and check if any in CC
+        //also check if LOS is valid
+        //can save that and reuse in Fire
+
+        
         let targetCC = false;
-        if ((action === "Fire" || action === "Opp Fire") && targetElement) {
-            let neighbourCubes = HexMap[targetElement.hexLabel].cube.neighbours();
-            ccLoop2:
-            for (let c=0;c<neighbourCubes.length;c++) {
-                let hex = HexMap[neighbourCubes[c].label()];
-                if (hex && hex.tokenIDs.length > 0) {
-                    for (let i=0;i<hex.tokenIDs.length;i++) {
-                        let el2 = Elements[hex.tokenIDs[i]];
-                        if (el2.nation !== targetElement.nation) {
-                            cc = true;
-                            break ccLoop2;
-                        }
-                    }
+        let targets = [];
+        if (targetElement) {
+            targets = [targetElement];
+            if (targetElement.type !== "Individual") {
+                let leader = targetElement.Leader();
+                if (shooter.individual === "Sniper") {
+                    targets = [leader];
+                } else {
+                    targets.push(leader);
                 }
+            };
+            if (HexMap[targetElement.hexLabel].terrain.includes("Building")) {
+                let terrainID = HexMap[targetElement.hexLabel].terrainID;
+                _.each(Elements,element => {
+                    let hex = HexMap[element.hexLabel];
+                    if (hex.terrainID === terrainID) {
+                        targets.push(element);
+                    }
+                })
             }
         }
 
 
 
-
-
+        if (action === "Fire") {
+            for (let i=0;i<targets.length;i++) {
+                let target = targets[i];
+                let neighbourCubes = HexMap[target.hexLabel].cube.neighbours();
+                ccLoop2:
+                for (let c=0;c<neighbourCubes.length;c++) {
+                    let hex = HexMap[neighbourCubes[c].label()];
+                    if (hex && hex.tokenIDs.length > 0) {
+                        for (let i=0;i<hex.tokenIDs.length;i++) {
+                            let el2 = Elements[hex.tokenIDs[i]];
+                            if (el2.nation !== target.nation) {
+                                targetCC = true;
+                                break ccLoop2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         SetupCard(element.name,action,element.nation);
         
@@ -2212,20 +2239,19 @@ log(Tag)
         if (action === "Reload" && element.token.get(SM.ammo) === false) {
             errorMsg.push("Element is not Out of Ammo/Jammed");
         }
-        if (action === "Opp Fire" && element.token.get(SM.ammo) === true) {
-            errorMsg.push("Element is Out of Ammo or Jammed");
-        }
-        if (action === "Opp Fire" && element.token.get(SM.oppfire) === true) {
+//MGs
+        if (action === "Fire" && element.token.get(SM.oppfire) === true) {
             errorMsg.push("Element has already Opp Fired this Phase");
         }
-        if (cc === true && action !== "Opp Fire") {
+//maybe only if distance is 1
+        if (cc === true && action !== "Fire") {
             errorMsg.push("Element is locked in Close Combat and may not take any Actions");
         }
-        if (targetCC === true && action !== "Opp Fire") {
+        if (targetCC === true && action !== "Fire") {
             errorMsg.push("Target is locked in Close Combat and may not be Fired upon");
         }
-        if (action === "Opp Fire" && status === "Suppressed") {
-            errorMsg.push("Suppressed Units may not Opp Fire");
+        if (action === "Fire" && status === "Suppressed") {
+            errorMsg.push("Suppressed Units may not Fire");
         }
 
         if (action.includes("Fire") && element.individual.includes("Sniper") && elementHex.terrain.includes("Sniper") === false) {
@@ -2277,7 +2303,7 @@ log(Tag)
             })
         }
 
-        //if not current element and not opp fire
+//if not current element and not opp fire - fix
         if (action !== "Opp Fire") {
             if (element.id !== activeElementID) {
                 let element2 = Elements[activeElementID];
@@ -2310,7 +2336,7 @@ log(Tag)
                 Move(element);
                 break;
             case 'Fire':
-                Fire(element,targetElement);
+                Fire(element,targets,weaponNum);
                 break;
             case 'Spot':
                 Spot(element);
@@ -2324,9 +2350,7 @@ log(Tag)
             case 'Reload':
                 Reload(element);
                 break;
-            case 'Opp Fire':
-                Fire(element,targetElement,"Opp");
-                break;
+
 
         }
 
@@ -2581,17 +2605,37 @@ log(result)
         let refElement = Elements[msg.selected[0]._id];
         let group = AdjacentTokens(msg.selected[0]._id);
 
-_.each(group,ind => {
-    sendChat("",Elements[ind].name)
-})
+        if (refElement.sectionID !== activeSectionID) {
+            let err = true;
+            let unactivated = (refElement.token.get("aura1_color") === "#00ff00") ? true:false;
+            for (let i=0;i<group.length;i++) {
+                let ind = Elements[group[i]];
+                if (ind.sectionID === activeSectionID) {
+                    refElement = ind;
+                    err = false;
+                    break;
+                }
+                if (ind.token.get("aura1_color") === "#00ff00" && unactivated === false) {
+                    unactivated = true;
+                    refElement = ind;
+                }
+            }
+            if (err === true && unactivated === false) {
+                SetupCard("Neutral","","Neutral");
+                outputCard.body.push("One of Elements has to be Active");
+                PrintCard();
+                return;
+            }
+
+        }
+
+
+
 
 
         SetupCard(refElement.nation,"Close Combat",refElement.nation);
-        if (refElement.sectionID !== activeSectionID) {
-            outputCard.body.push("Not Active Section");
-            PrintCard();
-            return;
-        }
+
+
 
         let highestResult = [0,0];
         let sides = [[],[]];
@@ -3033,10 +3077,15 @@ _.each(group,ind => {
         element.rallied = true;
     }
 
-    const Fire = (shooter,target,special = "Nil") => {
-        //special may be "Opp" ? how to figure targetted ?
+    const Fire = (shooter,targets,weaponNum) => {
+let fireType = "Normal";
+//opp vs targeted vs normal
+
+
+
+
         let losResult = LOS(shooter,target);
-        let weapon = shooter.weaponArray[0];
+        let weapon = shooter.weaponArray[parseInt(weaponNum)];
         let minRange = weapon.effRange[0];
         let maxRange = weapon.effRange[1];
         let rangedDice = weapon.rangedDice
@@ -3082,24 +3131,9 @@ _.each(group,ind => {
             return;
         }
 
-        let targets = [target];
-        if (target.type !== "Individual") {
-            let leader = target.Leader();
-            if (shooter.individual === "Sniper") {
-                targets = [leader];
-            } else {
-                targets.push(leader);
-            }
-        };
+
         let targetName = targets[0].name;
-        if (HexMap[target.hexLabel].terrain.includes("Building")) {
-            let terrainID = HexMap[target.hexLabel].terrainID;
-            _.each(Elements,element => {
-                let hex = HexMap[element.hexLabel];
-                if (hex.terrainID === terrainID) {
-                    targets.push(element);
-                }
-            })
+        if (HexMap[targets[0]].terrain.includes("Building")) {
             targetName = "All Targets in Building";
         }
 
@@ -3117,7 +3151,7 @@ _.each(group,ind => {
             if (target.type.includes("Vehicle") === false) {
                 let rollTarget;
                 let tip = "Target: ";
-                if (special === "Opp" && cover === 0) {
+                if (fireType === "Opp" && cover === 0) {
                     rollTarget = 4;
                     tip += "4+";
                 } else {
@@ -3210,7 +3244,7 @@ _.each(group,ind => {
 
 
 
-        if (special === "Opp") {
+        if (fireType === "Opp") {
             shooter.token.set(SM.oppfire,true);
         } else {
             shooter.fired = true;
@@ -3338,9 +3372,6 @@ _.each(group,ind => {
                 break;
             case '!Fire':
                 Fire(msg);
-                break;
-            case '!RunCC':
-                RunCC(msg);
                 break;
             case '!CloseCombat':
                 CloseCombat(msg);
