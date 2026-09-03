@@ -832,7 +832,7 @@ log(this.name)
                 let wpen = parseInt(aa[pre + "pen"]) || "-";
                 let wai = aa[pre + "ai"];
                 wai = wai.split("/").map(e => parseInt(e));
-                let wnotes = aa[pre + "notes"];
+                let wnotes = aa[pre + "notes"] || " ";
                 let weapon = {
                     name: wname,
                     effRange: weff, //an array of min/max
@@ -2218,10 +2218,10 @@ log(Tag)
         if (action === "Opp Fire" && element.token.get(SM.oppfire) === true) {
             errorMsg.push("Element has already Opp Fired this Phase");
         }
-        if (cc === true) {
+        if (cc === true && action !== "Opp Fire") {
             errorMsg.push("Element is locked in Close Combat and may not take any Actions");
         }
-        if (targetCC === true) {
+        if (targetCC === true && action !== "Opp Fire") {
             errorMsg.push("Target is locked in Close Combat and may not be Fired upon");
         }
         if (action === "Opp Fire" && status === "Suppressed") {
@@ -2778,6 +2778,7 @@ _.each(group,ind => {
         const visited = [];
         const groups = [];
         const keys = Object.keys(Elements);
+        const ignoreTokens = ["Marker","Initiative Token","Neutral Token"];
 
         // 1. Helper to find neighbours
         const getneighbours = (current) => {
@@ -2785,7 +2786,7 @@ _.each(group,ind => {
             for (let i=0;i<keys.length;i++) {
                 let key = keys[i];
                 if (key === current) {continue};
-                if (Elements[key].type === "Marker" || Elements[key].type === "Initiative Token") {
+                if (ignoreTokens.includes(Elements[key].type)) {
                     continue;
                 }
                 let d = Elements[key].Distance(Elements[current]);
@@ -2888,7 +2889,7 @@ _.each(group,ind => {
                 continue;
             }
 
-            if (refElement.type === "Initiative Token") {
+            if (refElement.type === "Initiative Token" || refElement.type === "Neutral Token") {
                 continue;
             }
             if (refElement.player < 2) {
@@ -3080,13 +3081,41 @@ _.each(group,ind => {
             PrintCard();
             return;
         }
-        outputCard.body.push("Firing " + weapon.name + " out to " + totalRange + " Hexes");
+
+        let targets = [target];
+        if (target.type !== "Individual") {
+            let leader = target.Leader();
+            if (shooter.individual === "Sniper") {
+                targets = [leader];
+            } else {
+                targets.push(leader);
+            }
+        };
+        let targetName = targets[0].name;
+        if (HexMap[target.hexLabel].terrain.includes("Building")) {
+            let terrainID = HexMap[target.hexLabel].terrainID;
+            _.each(Elements,element => {
+                let hex = HexMap[element.hexLabel];
+                if (hex.terrainID === terrainID) {
+                    targets.push(element);
+                }
+            })
+            targetName = "All Targets in Building";
+        }
+
+
+
+
+
+
+        outputCard.body.push("Firing " + weapon.name + " at " + targetName);
+        outputCard.body.push("Max Range: " + totalRange + " Hexes");
         if (losResult.distance > (maxRange + bonusRange)) {
             //if distance > maxRange + bonusRange is not an error but a miss/wasted shot
             outputCard.body.push("All Shots Miss due to Distance");
         } else {
             if (target.type.includes("Vehicle") === false) {
-                let target;
+                let rollTarget;
                 let tip = "Target: ";
                 if (special === "Opp" && cover === 0) {
                     rollTarget = 4;
@@ -3117,6 +3146,7 @@ _.each(group,ind => {
                     }
                 }
                 redRolls = redRolls.sort().reverse();
+                let sep = (redDice === 0) ? "+": "+ / ";
 
                 let whiteRolls = [];
                 let whiteDice = weapon.antiInfantry[0];
@@ -3142,31 +3172,12 @@ _.each(group,ind => {
                     redDisplay += DisplayDice(roll,"Red",24) + " "; 
                 })
                 let line = '[Rolls: ](#" class="showtip" title="' + tip + ')';   
-                line += whiteDisplay + " vs. " + rollTarget + "+ / " + redDisplay + redDiceDisplay;
+                line += whiteDisplay + " vs. " + rollTarget + sep + redDisplay + redDiceDisplay;
                 outputCard.body.push(line);
                 outputCard.body.push("[hr]");
                 if (hits === 0) {
                     outputCard.body.push("All Shots Miss");
                 } else {
-                    let targets = [target];
-                    if (target.type !== "Individual") {
-                        let leader = target.Leader();
-                        if (shooter.individual === "Sniper") {
-                            targets = [leader];
-                        } else {
-                            targets.push(leader);
-                        }
-                    };
-                    if (HexMap[target.hexLabel].terrain.includes("Building")) {
-                        let terrainID = HexMap[target.hexLabel].terrainID;
-                        _.each(Elements,element => {
-                            let hex = HexMap[element.hexLabel];
-                            if (hex.terrainID === terrainID) {
-                                targets.push(element);
-                            }
-                        })
-                    }
-
                     let s = hits === 1 ? "":"s";
                     let s2 = targets.length === 1 ? "The Target takes ":"The Targets take ";
                     outputCard.body.push(s2 + hits + " Hit" + s);
