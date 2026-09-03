@@ -1964,6 +1964,10 @@ log(weaponArray)
             state.FbF.unitsLeftToActivate[currentPlayer] = (unitsLeftToActivate - pulled);
             let s = (pulled > 1 || pulledDisplay === "All Unactivated") ? "s":"";
 
+            //clear oppfire markers
+            _.each(Elements,element => {
+                element.token.set(SM.oppfire,false);
+            })
 
             SetupCard(Nations[nation].short + " Phase","",nation);
             let line = "";
