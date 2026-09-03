@@ -177,7 +177,7 @@ const Main = (() => {
         "Woods": {cover: 1, conceal: true, blockLOS: "Past", height: 3},
         "Fields": {cover: "Soft Cover for Stationary Infantry", conceal: "Infantry", blockLOS: false, height: 0, interCover: 0},
         "Gun Pit": {cover: 2, conceal: false, blockLOS: "Past", height: .5},
-
+        "Sniper's Nest": {cover: 2, conceal: true, blockLOS: false, height: 0},
     }
 
     const EdgeInfo = {
@@ -982,6 +982,19 @@ log(weaponArray)
                 } else {
                     outputCard.body.push(this.name + " stays where it is, and cannot move any further this Turn");
                 }
+            } else if (reason === "Sniper") {
+                if (fail === 0) {
+                    outputCard.body.push("The Sniper stays Hidden");
+                } else {
+//could maybe modify to be based on # of possible spotters, then give them a spot roll each, stopping if one makes it
+                    let roll2 = randomInteger(6);
+                    if (roll2 > 2) {
+                        outputCard.body.push("The Sniper stays Hidden");
+                    } else {
+                        outputCard.body.push("The Sniper is Spotted");
+                        this.SetStatus("Revealed");
+                    }
+                }
             }
 
         }
@@ -1539,6 +1552,16 @@ log(weaponArray)
     
         //Add Token Terrain, Building might be multihex
         let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
+        if (page2ID) {
+            let tokens2 = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
+            for (let i=0;i<tokens2.length;i++) {
+                if (tokens.some(t => t.id === token.id)) {
+                    continue;
+                }
+                tokens.push(token);
+            }
+        }
+
         _.each(tokens,token => {
             let name = token.get("name") || " ";
             if (name.includes("Map")) {
@@ -1560,7 +1583,9 @@ log(weaponArray)
                     if (hex) {
                         if (hex.terrain === "Open") {
                             hex.terrain = name;
-                        } 
+                        } else {
+                            hex.terrain += ", " + name;
+                        }
                         hex.terrainHeight = Math.max(terrain.height,hex.terrainHeight);
                         hex.blockLOS = terrain.blockLOS;
                         let ic = terrain.interCover || 0;
@@ -1895,6 +1920,24 @@ log(weaponArray)
         let turn = state.FbF.turn;
         if (turn === 0) {
             //start of game stuff
+            //1st check for any element that start the game visible
+            _.each(Elements, element => {
+                if (element.name.includes("Sniper's Nest")) {
+                    element.token.set({
+                        layer: map,
+                        tint_color: "transparent",
+                    })
+                    let hex = HexMap[element.hexLabel];
+                    hex.terrain += ", Sniper's Nest";
+                    hex.cover = Math.max(hex.cover,2);
+                    hex.concealment = true;
+                }
+
+
+
+
+            })
+
 
         }
         UnitNumbers();
@@ -2077,7 +2120,8 @@ log(Tag)
    
        //check if element in CC
         let cc = false;
-        let neighbourCubes = HexMap[element.hexLabel].cube.neighbours();
+        let elementHex = HexMap[element.hexLabel];
+        let neighbourCubes = elementHex.cube.neighbours();
         ccLoop:
         for (let c=0;c<neighbourCubes.length;c++) {
             let hex = HexMap[neighbourCubes[c].label()];
@@ -2178,6 +2222,13 @@ log(Tag)
         if (action === "Opp Fire" && status === "Suppressed") {
             errorMsg.push("Suppressed Units may not Opp Fire");
         }
+
+        if (action.includes("Fire") && shooter.individual.includes("Sniper") && elementHex.terrain.includes("Sniper") === false) {
+            errorMsg.push("Sniper can only Fire from one of his Prepared Nests");
+        }
+
+
+
 
 //Targets moving within a building cannot be hit with opportunity fire, unless the firer is in the same building.
 
@@ -3122,7 +3173,13 @@ _.each(group,ind => {
             shooter.fired = true;
         }
 
-        shooter.token.set("tint_color","transparent");
+        if (shooter.individual !== "Sniper") {
+            shooter.token.set("tint_color","transparent");
+        } else {
+            shooter.Morale("Sniper");
+        }
+
+
 
         //hidden shooter revealed
     }
