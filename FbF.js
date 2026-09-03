@@ -882,7 +882,7 @@ log(weaponArray)
 
         }
 
-        Morale(reason,number = 1) {
+        Morale(reason,number = 1,maxFail = number) {
             if (this.notes.includes("Leader Tag Along")) {
                 //auto pass
                 outputCard.body.push(this.name +" can Charge into contact, ending its Turn");
@@ -909,6 +909,8 @@ log(weaponArray)
                     fail++;
                 } else {pass++};
             }
+            fail = Math.min(maxFail,fail);
+
             rolls.sort().reverse();
             let line = "";
             _.each(rolls,roll => {
