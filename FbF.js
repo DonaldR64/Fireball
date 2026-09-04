@@ -2263,7 +2263,7 @@ log(weaponArray)
         if (action === "Fire" && element.moveOrFire === true && element.moved === true) {
             errorMsg.push("Element Moved");
         }
-        if (action === "Fire" && element.token.get(SM.ammo) === true) {
+        if (action === "Fire" && element.token.get(SM.ammo) === true && element.type !== "Vehicle") {
             errorMsg.push("Element is Out of Ammo or Jammed");
         }
         if (action === "Fire" && element.spot === true && element.recon === true) {
@@ -3169,23 +3169,43 @@ let fireType = "Normal";
         let rangedTip = "Effective Range: " + maxRange;
         rangedTip += "<br>Range Rolls: " + rangedRolls + " [" + rangedDiceDisplay + "]";
 
+        let targetTips = [];
 
-        let targetName = targets[0].name;
-        if (HexMap[targets[0].hexLabel].terrain.includes("Building")) {
-            targetName = "Building Occupants";
-        }
         sendPing(targets[0].token.get("left"),targets[0].token.get("top"),Campaign().get("playerpageid"),null,true);
 
-        SetupCard(shooter.name,"Firing",shooter.nation);
+        SetupCard(shooter.name,"Weapons Fire",shooter.nation);
 
         outputCard.body.push("Firing " + weapon.name);
+
+        let whiteDice = weapon.antiInfantry[0];
+        let redDice = weapon.antiInfantry[1];
+
+        if (shooter.token.get(SM.ammo) === true && shooter.type.includes("Vehicle")) {
+            whiteDice = 0;
+            targetTips.push("Vehicle Low on Ammo");
+        }
+
+        if ((shooter.type === "Weapons Team" || shooter.type.includes("Vehicle")) && shooter.token.get(SM.ammo) === false) {
+            let ammoRoll1 = randomInteger(6);
+            let ammoRoll2 = randomInteger(6);
+log(ammoRoll1 + " " + ammoRoll2)
+            if (ammoRoll1 === 1 && ammoRoll2 < 3) {
+                if (shooter.type.includes("Vehicle")) {
+                    ammoDisplay = "Weapons Running Low on Ammo or a Weapon Jammed";
+                } else {
+                    ammoDisplay = "Weapon Jammed or Ran out of Ammo";
+                }
+                shooter.token.set(SM.ammo,true);
+            }
+        }
 
 
         if (losResult.distance > totalRange) {
             outputCard.body.push("All Shots Miss due to Distance");
+
+
         } else {
             if (targets[0].type.includes("Vehicle") === false) {
-                let targetTips = [];
                 let drm = 0;
                 if (fireType === "Opp" && cover === 0) {
                     targetTips.push("Moving in Open Ground +1");
@@ -3206,9 +3226,8 @@ let fireType = "Normal";
 
 
                 let hits = 0;
-
+                let whiteRolls = [];
                 let redRolls = [];
-                let redDice = weapon.antiInfantry[1];
                 for (let i=0;i<redDice;i++) {
                     let roll = randomInteger(6);
                     redRolls.push(roll);
@@ -3218,8 +3237,6 @@ let fireType = "Normal";
                 }
                 redRolls = redRolls.sort().reverse();
 
-                let whiteRolls = [];
-                let whiteDice = weapon.antiInfantry[0];
                 let needRed4 = (weapon.notes.includes("4+ on Red")) ? true:false;
                 if (needRed4) {
                     targetTips.push("White also needs Red 4+");
@@ -3233,7 +3250,6 @@ let fireType = "Normal";
                     finalTip += "------------<br>";
                 }
                 finalTip += rangedTip;
-
 
                 for (let i=0;i<whiteDice;i++) {
                     let roll = Math.max(1,Math.min(randomInteger(6) + drm,6));
@@ -3254,9 +3270,6 @@ let fireType = "Normal";
                 _.each(redRolls,roll => {
                     redDisplay += DisplayDice(roll,"Red",24) + " "; 
                 })
-
-
-
 
                 let line = '[Rolls: ](#" class="showtip" title="' + finalTip + ')';   
                 line += whiteDisplay + redDisplay;
@@ -3314,7 +3327,6 @@ let fireType = "Normal";
 
 
 
-        //hidden shooter revealed
     }
 
 
