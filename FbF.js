@@ -3137,10 +3137,13 @@ log(result)
     const Fire = () => {
 let fireType = "Normal";
 //opp vs targeted vs normal
-        let losResult = FireInfo.losResult;
         let weapon = FireInfo.weapon;
         let shooter = FireInfo.shooter;
         let targets = FireInfo.targets;
+
+        let losResult = FireInfo.losResult;
+        let cover = Math.max(losResult.cover,losResult.interCover);
+        //mortars???
 
         let maxRange = weapon.effRange[1];
         let rangedDice = weapon.rangedDice;
@@ -3161,50 +3164,35 @@ let fireType = "Normal";
 
         rangedRolls.sort().reverse();
         rangedRolls.toString().replaceAll(","," + ");
-        let rangedTip = "Effective Range: " + maxRange;
-        rangedTip += "<br>Range Dice: " + rangedDiceDisplay;
-        rangedTip += "<br>Rolls: " + rangedRolls;
         let totalRange = parseInt(maxRange) + parseInt(bonusRange);
-        totalRange = '[' + totalRange + '](#" class="showtip" title="' + rangedTip + ')';   
 
-        let cover = Math.max(losResult.cover,losResult.interCover);
-//mortars??
+        let rangedTip = "Effective Range: " + maxRange;
+        rangedTip += "<br>Range Dice: " + rangedRolls + "[" + rangedDiceDisplay + "]";
 
-
-
-        SetupCard(shooter.name,"",shooter.nation);
-
+        SetupCard(shooter.name,weapon.name,shooter.nation);
 
         let targetName = targets[0].name;
         if (HexMap[targets[0].hexLabel].terrain.includes("Building")) {
             targetName = "All Targets in Building";
         }
 
-
-
-        outputCard.body.push("Firing " + weapon.name + " at " + targetName);
-        outputCard.subtitle = "Max Range: " + totalRange + " Hexes";
-        if (losResult.distance > (maxRange + bonusRange)) {
-            //if distance > maxRange + bonusRange is not an error but a miss/wasted shot
+        if (losResult.distance > totalRange) {
             outputCard.body.push("All Shots Miss due to Distance");
         } else {
             if (targets[0].type.includes("Vehicle") === false) {
-                let rollTarget;
-                let tip = "Target: ";
-                if (fireType === "Opp" && cover === 0) {
-                    rollTarget = 4;
-                    tip += "4+";
-                } else {
-                    rollTarget = 5;
-                    tip += "5+";
-                }
+                let rollTarget = 5;
+                let targetTip = "";
                 let drm = 0;
+                if (fireType === "Opp" && cover === 0) {
+                    targetTip += "<br>Opp Fire  +1";
+                    drm++;
+                }
                 if (losResult.distance <= bonusRange) {
-                    tip += "<br>Target within Range Dice +1";
+                    targetTip += "<br>Target within Range Dice +1";
                     drm++;
                 }
                 if (cover >= 2) {
-                    tip += "<br>Target in Hard Cover -1";
+                    targetTip += "<br>Target in Hard Cover -1";
                     drm--;
                 }
 
@@ -3220,12 +3208,15 @@ let fireType = "Normal";
                     }
                 }
                 redRolls = redRolls.sort().reverse();
-                let sep = (redDice === 0) ? "+": "+ / ";
 
                 let whiteRolls = [];
                 let whiteDice = weapon.antiInfantry[0];
                 let redDice4 = (weapon.notes.includes("4+ on Red") && redRolls.some(num => num < 4)) ? false:true;
-                let redDiceDisplay = (weapon.notes.includes("4+ on Red")) ? " vs. 4+":"";
+                if (redDice4) {
+                    targetTip += "White also needs Red 4+";
+                }
+
+
 
                 for (let i=0;i<whiteDice;i++) {
                     let roll = randomInteger(6);
@@ -3235,7 +3226,7 @@ let fireType = "Normal";
                         hits++;
                     }
                 }
-                whiteRolls = whiteRolls.sort().reverse();
+                whiteRolls = whiteRolls.sort().reverse().toString();
 
                 whiteDisplay = "";
                 _.each(whiteRolls,roll => {
@@ -3245,17 +3236,20 @@ let fireType = "Normal";
                 _.each(redRolls,roll => {
                     redDisplay += DisplayDice(roll,"Red",24) + " "; 
                 })
-                let line = '[Rolls: ](#" class="showtip" title="' + tip + ')';   
-                line += whiteDisplay + " vs. " + rollTarget + sep + redDisplay + redDiceDisplay;
+
+
+                let line = '[Rolls: ](#" class="showtip" title="' + targetTip + ')';   
+                line += whiteDisplay + redDisplay;
+
                 outputCard.body.push(line);
-                outputCard.body.push("[hr]");
+
                 if (hits === 0) {
                     outputCard.body.push("All Shots Miss");
                 } else {
                     let s = hits === 1 ? "":"s";
                     let s2 = targets.length === 1 ? "The Target takes ":"The Targets take ";
                     outputCard.body.push(s2 + hits + " Hit" + s);
-                    outputCard.body.push("[hr]");
+                    outputCard.body.push("[hr]")
                     let max = (shooter.individual === "Sniper") ? 1:hits;
                     _.each(targets,target => {
                         target.Morale("Firing",hits,max);
