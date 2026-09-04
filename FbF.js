@@ -3167,34 +3167,43 @@ let fireType = "Normal";
         let totalRange = parseInt(maxRange) + parseInt(bonusRange);
 
         let rangedTip = "Effective Range: " + maxRange;
-        rangedTip += "<br>Range Dice: " + rangedRolls + "[" + rangedDiceDisplay + "]";
+        rangedTip += "<br>Range Rolls: " + rangedRolls + " [" + rangedDiceDisplay + "]";
 
-        SetupCard(shooter.name,weapon.name,shooter.nation);
 
         let targetName = targets[0].name;
         if (HexMap[targets[0].hexLabel].terrain.includes("Building")) {
-            targetName = "All Targets in Building";
+            targetName = "Building Occupants";
         }
+        sendPing(targets[0].token.get("left"),targets[0].token.get("top"),Campaign().get("playerpageid"),null,true);
+
+        SetupCard(shooter.name,"Firing",shooter.nation);
+
+        outputCard.body.push("Firing " + weapon.name);
+
 
         if (losResult.distance > totalRange) {
             outputCard.body.push("All Shots Miss due to Distance");
         } else {
             if (targets[0].type.includes("Vehicle") === false) {
-                let rollTarget = 5;
-                let targetTip = "";
+                let targetTips = [];
                 let drm = 0;
                 if (fireType === "Opp" && cover === 0) {
-                    targetTip += "<br>Opp Fire  +1";
+                    targetTips.push("Moving in Open Ground +1");
                     drm++;
                 }
-                if (losResult.distance <= bonusRange) {
-                    targetTip += "<br>Target within Range Dice +1";
-                    drm++;
-                }
-                if (cover >= 2) {
-                    targetTip += "<br>Target in Hard Cover -1";
+                if (cover < 2 && targets[0].type === "Individual") {
+                    targetTips.push("Individual -1");
                     drm--;
                 }
+                if (cover > 1) {
+                    targetTips.push("Target in Hard Cover -1");
+                    drm--;
+                }
+                if (losResult.distance <= bonusRange) {
+                    targetTips.push("Target within Range Dice +1");
+                    drm++;
+                }
+
 
                 let hits = 0;
 
@@ -3211,23 +3220,32 @@ let fireType = "Normal";
 
                 let whiteRolls = [];
                 let whiteDice = weapon.antiInfantry[0];
-                let redDice4 = (weapon.notes.includes("4+ on Red") && redRolls.some(num => num < 4)) ? false:true;
-                if (redDice4) {
-                    targetTip += "White also needs Red 4+";
+                let needRed4 = (weapon.notes.includes("4+ on Red")) ? true:false;
+                if (needRed4) {
+                    targetTips.push("White also needs Red 4+");
                 }
 
+                let finalTip = "";
+                _.each(targetTips,tip => {
+                    finalTip += tip + "<br>";
+                })
+                if (targetTips.length > 0) {
+                    finalTip += "------------<br>";
+                }
+                finalTip += rangedTip;
 
 
                 for (let i=0;i<whiteDice;i++) {
-                    let roll = randomInteger(6);
-                    roll = Math.max(1,Math.min(roll + drm,6));
+                    let roll = Math.max(1,Math.min(randomInteger(6) + drm,6));
                     whiteRolls.push(roll);
-                    if (redDice4 && roll >= rollTarget) {
-                        hits++;
+                    if (needRed4 && redRolls.every(num => num < 4)) {
+                        continue;
+                    }
+                    if (roll > 4) {
+                        hits++
                     }
                 }
-                whiteRolls = whiteRolls.sort().reverse().toString();
-
+                whiteRolls = whiteRolls.sort().reverse();
                 whiteDisplay = "";
                 _.each(whiteRolls,roll => {
                     whiteDisplay += DisplayDice(roll,"White",24) + " "; 
@@ -3238,7 +3256,9 @@ let fireType = "Normal";
                 })
 
 
-                let line = '[Rolls: ](#" class="showtip" title="' + targetTip + ')';   
+
+
+                let line = '[Rolls: ](#" class="showtip" title="' + finalTip + ')';   
                 line += whiteDisplay + redDisplay;
 
                 outputCard.body.push(line);
