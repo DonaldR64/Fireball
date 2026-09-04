@@ -2134,7 +2134,8 @@ log(weaponArray)
         let status = element.Status();
         let action = Tag[2];
         let weaponNum = Tag[3] || "";
-        
+        let weapon;
+
         let target = Elements[Lookup(Tag[4])];
         if (!element || action === "Fire" && !target) {
             sendChat("","Not in Array");
@@ -2166,7 +2167,7 @@ log(weaponArray)
         //if fire, build up the info and check for CC 
         if (action === "Fire" && errorMsg.length === 0) {
     //mortars
-            let weapon = element.weaponArray[weaponNum];
+            weapon = element.weaponArray[weaponNum];
             if (targetLOS.distance < weapon.effRange[0]) {
                 errorMsg.push("Target is Under Weapon's Min Range");
             }
@@ -2278,8 +2279,7 @@ log(weaponArray)
         if (action === "Reload" && element.token.get(SM.ammo) === false) {
             errorMsg.push("Element is not Out of Ammo/Jammed");
         }
-//MGs
-        if (action === "Fire" && element.token.get(SM.oppfire) === true) {
+        if (action === "Fire" && element.token.get(SM.oppfire) === true && weapon.notes.includes("Machinegun") === false) {
             errorMsg.push("Element has already Opp Fired this Phase");
         }
 
@@ -3223,7 +3223,10 @@ log(ammoRoll1 + " " + ammoRoll2)
                     targetTips.push("Target within Range Dice +1");
                     drm++;
                 }
-
+                if (shooter.token.get(SM.oppfire)) {
+                    targetTips.push("Machinegun Multiple Opp Fire -1");
+                    drm--;
+                }
 
                 let hits = 0;
                 let whiteRolls = [];
