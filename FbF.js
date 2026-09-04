@@ -912,7 +912,7 @@ log(weaponArray)
             fail = Math.min(maxFail,fail);
 
             rolls.sort().reverse();
-            let line = "";
+            let line = this.name + ": ";
             _.each(rolls,roll => {
                 line += DisplayDice(roll,this.nation,24) + " ";
             })
@@ -2134,6 +2134,7 @@ log(weaponArray)
         let status = element.Status();
         let action = Tag[2];
         let weaponNum = Tag[3] || "";
+        
         let target = Elements[Lookup(Tag[4])];
         if (!element || action === "Fire" && !target) {
             sendChat("","Not in Array");
@@ -2154,10 +2155,9 @@ log(weaponArray)
         } else {
             toCheck.concat(element.Leader());
         }
-
        //check if element or attached leader is in CC
         for (let i=0;i<toCheck.length;i++) {
-            if (toCheck.token.get(SM.CC) === true) {
+            if (toCheck[i].token.get(SM.CC) === true) {
                 errorMsg.push("Element is locked in Close Combat and may not take any Actions");
                 break;
             }
@@ -2166,6 +2166,11 @@ log(weaponArray)
         //if fire, build up the info and check for CC 
         if (action === "Fire" && errorMsg.length === 0) {
     //mortars
+            let weapon = element.weaponArray[weaponNum];
+            if (targetLOS.distance < weapon.effRange[0]) {
+                errorMsg.push("Target is Under Weapon's Min Range");
+            }
+
             FireInfo = {};
             if (targetLOS.los === true) {
                 if (element.individual === "Sniper") {
@@ -2173,6 +2178,7 @@ log(weaponArray)
                         errorMsg.push(target.name + " is locked in Close Combat and may not be fired at");
                     } else {
                         FireInfo = {
+                            weapon: weapon,
                             shooter: element,
                             targets: [target],
                             losResult: targetLOS,
@@ -2193,18 +2199,19 @@ log(weaponArray)
                             }
                         })
                     } else {
-                        if (target.leader === true) {
-                            let follower = target.Followers()[0];
-                            if (follower) {
-                                targets.unshift(follower);
+                        if (target.leader) {
+                            let el = target.Followers()[0];
+                            if (el) {
+                                targets.unshift(el)
                             }
                         } else {
-                            let leader = target.Leader();
-                            if (leader) {
-                                targets.push(leader);
+                            let ld = target.Leader();
+                            if (ld) {
+                                targets.push(ld);
                             }
                         }
                     }
+
                     let inCC = false;
                     for (let i=0;i<targets.length;i++) {
                         if (targets[i].token.get(SM.CC) === true) {
@@ -2214,6 +2221,7 @@ log(weaponArray)
                     }
                     if (inCC === false) {
                         FireInfo = {
+                            weapon: weapon,
                             shooter: element,
                             targets: targets,
                             losResult: targetLOS,
@@ -2279,7 +2287,7 @@ log(weaponArray)
             errorMsg.push("Suppressed Units may not Fire");
         }
 
-        if (action.includes("Fire") && element.individual.includes("Sniper") && elementHex.terrain.includes("Sniper") === false) {
+        if (action.includes("Fire") && element.individual.includes("Sniper") && HexMap[element.hexLabel].terrain.includes("Sniper") === false) {
             errorMsg.push("Sniper can only Fire from one of his Prepared Nests");
         }
 
@@ -2361,7 +2369,7 @@ log(weaponArray)
                 Move(element);
                 break;
             case 'Fire':
-                Fire(element,targets,weaponNum);
+                Fire();
                 break;
             case 'Spot':
                 Spot(element);
@@ -2402,24 +2410,20 @@ log(weaponArray)
 
 
 
-    const CCCheck = (element) => {
-        let result = false;
+    const Locked = (element) => {
         let elementHex = HexMap[element.hexLabel];
         let neighbourCubes = elementHex.cube.neighbours();
-        ccLoop:
         for (let c=0;c<neighbourCubes.length;c++) {
             let hex = HexMap[neighbourCubes[c].label()];
             if (hex && hex.tokenIDs.length > 0) {
                 for (let i=0;i<hex.tokenIDs.length;i++) {
                     let el2 = Elements[hex.tokenIDs[i]];
                     if (el2.nation !== element.nation) {
-                        result = true;
-                        break ccLoop;
+                        el2.token.set(SM.CC,true);
                     }
                 }
             }
         }
-        return result;
     }
 
 
@@ -2808,21 +2812,26 @@ log(result)
             })
         } else {
             outputCard.body.push(state.FbF.nations[winner] + " Wins!");
+            outputCard.body.push("[hr]");
             if (onlyInd[winner] === true) {
                 outputCard.body.push("They hold off the enemy long enough to get away. They must immediately conduct a rout move, ending the rout move in good-order. They are subject to Targetting Fire.");
             } else {
                 remaining = CCLoser(sides[loser],delta);
-                if (remaining.Routing || remaining["Routing Indiv"] ) {
+                if (remaining.Routing.length > 0 || remaining["Routing Indiv"].length > 0) {
                     outputCard.body.push("Any Routing Elements are subject to Targetting Fire");
                 }
-                if (remaining.Good === false && remaining["Good Indiv"]) {
+                if (remaining.Good.length === 0 && remaining["Good Indiv"].length > 0) {
                     outputCard.body.push("All  Individuals must also make a Rout Move even if in Good Order as there are no remaining Unbroken Troops. They are subject to Targetting Fire.")
                 }
-                if (remaining.Good === false && remaining["Good Indiv"] --- false && remaining.Routing === false && remaining["Routing Indiv"] === false) {
+                if (remaining.Good.length === 0 && remaining["Good Indiv"].length === 0 && remaining.Routing.length === 0 && remaining["Routing Indiv"].length === 0) {
                     outputCard.body.push("All " + state.FbF.nations[loser].short + " Elements were eliminated or Surrendered");
                 }
-                if (remaining.Good === true) {
+                if (remaining.Good.length > 0) {
                     outputCard.body.push("Remaining Elements stay locked in Close Combat");
+                    _.each(remaining.Good,el => {
+                        el.token.set(SM.CC,true);
+                        Locked(el);
+                    })
                 }
             }
         }
@@ -2831,27 +2840,28 @@ log(result)
 
     const CCLoser = (ids,delta) => {
         let remaining = {
-            Good: false,
-            Routing: false,
-            "Good Indiv": false,
-            "Routing Indiv": false,
+            Good: [],
+            Routing: [],
+            "Good Indiv": [],
+            "Routing Indiv": [],
         }
         _.each(ids,id => {
             let element = Elements[id];
             element.Morale("CC",delta);
+            outputCard.body.push("[hr]")
             if (element.token.get("status_dead") === false) {
                 if (element.type === "Individual") {
                     if (element.Status() === "Broken") {
-                        remaining["Routing Indiv"] = true;
+                        remaining["Routing Indiv"].push(element);
                     } else {
-                        remaining["Good Indiv"] = true;
+                        remaining["Good Indiv"].push(element);
                     }
                 };
                 if (element.type !== "Individual") {
                     if (element.Status() === "Broken") {
-                        remaining["Routing"] = true;
+                        remaining["Routing"].push(element);
                     } else {
-                        remaining["Good"] = true;
+                        remaining["Good"].push(element);
                     }
                 }
             }
@@ -3124,18 +3134,16 @@ log(result)
         element.rallied = true;
     }
 
-    const Fire = (shooter,targets,weaponNum) => {
+    const Fire = () => {
 let fireType = "Normal";
 //opp vs targeted vs normal
+        let losResult = FireInfo.losResult;
+        let weapon = FireInfo.weapon;
+        let shooter = FireInfo.shooter;
+        let targets = FireInfo.targets;
 
-
-
-
-        let losResult = LOS(shooter,target);
-        let weapon = shooter.weaponArray[parseInt(weaponNum)];
-        let minRange = weapon.effRange[0];
         let maxRange = weapon.effRange[1];
-        let rangedDice = weapon.rangedDice
+        let rangedDice = weapon.rangedDice;
         let bonusRange = 0;
 
         let rangedRolls = [];
@@ -3161,41 +3169,26 @@ let fireType = "Normal";
 
         let cover = Math.max(losResult.cover,losResult.interCover);
 //mortars??
-        let errorMsg = [];
-        if (losResult.los === false) {
-//add indirect here
-            errorMsg.push("Target is not in LOS");
-        }
-        if (losResult.distance < minRange) {
-            errorMsg.push("Target is Under Weapon's Min Range");
-        }
 
 
 
-        SetupCard(shooter.name,"Weapons Fire",shooter.nation);
-        if (ErrorMsg(errorMsg)) {
-            PrintCard();
-            return;
-        }
+        SetupCard(shooter.name,"",shooter.nation);
 
 
         let targetName = targets[0].name;
-        if (HexMap[targets[0]].terrain.includes("Building")) {
+        if (HexMap[targets[0].hexLabel].terrain.includes("Building")) {
             targetName = "All Targets in Building";
         }
 
 
 
-
-
-
         outputCard.body.push("Firing " + weapon.name + " at " + targetName);
-        outputCard.body.push("Max Range: " + totalRange + " Hexes");
+        outputCard.subtitle = "Max Range: " + totalRange + " Hexes";
         if (losResult.distance > (maxRange + bonusRange)) {
             //if distance > maxRange + bonusRange is not an error but a miss/wasted shot
             outputCard.body.push("All Shots Miss due to Distance");
         } else {
-            if (target.type.includes("Vehicle") === false) {
+            if (targets[0].type.includes("Vehicle") === false) {
                 let rollTarget;
                 let tip = "Target: ";
                 if (fireType === "Opp" && cover === 0) {
@@ -3262,6 +3255,7 @@ let fireType = "Normal";
                     let s = hits === 1 ? "":"s";
                     let s2 = targets.length === 1 ? "The Target takes ":"The Targets take ";
                     outputCard.body.push(s2 + hits + " Hit" + s);
+                    outputCard.body.push("[hr]");
                     let max = (shooter.individual === "Sniper") ? 1:hits;
                     _.each(targets,target => {
                         target.Morale("Firing",hits,max);
@@ -3300,6 +3294,7 @@ let fireType = "Normal";
         if (shooter.individual !== "Sniper") {
             shooter.token.set("tint_color","transparent");
         } else {
+            outputCard.body.push("[hr]");
             shooter.Morale("Sniper");
         }
 
