@@ -11,7 +11,7 @@ const Main = (() => {
     let Elements = {};
     let activeSectionID; //sectionID that just activated
     let activeElementID; //last element that activated
-    let CloseCombats = []
+    let FireInfo = {};
 
     let SurnameList = {
         Germany: ["Schmidt","Schneider","Fischer","Weber","Meyer","Wagner","Becker","Schulz","Hoffmann","Bauer","Richter","Klein","Wolf","Schroder","Neumann","Schwarz","Braun","Hofmann","Werner","Krause","Konig","Lang","Vogel","Frank","Beck"],
@@ -198,7 +198,7 @@ const Main = (() => {
     const SM = {
         ammo: "status_red",
         oppfire: "status_Shell::5553215",
-
+        CC: "status_blue", //locked in CC
 
 
     }
@@ -1091,6 +1091,22 @@ log(weaponArray)
                 }
             })
             return leader;
+        }
+
+        Followers() {
+            //returns adjacent elements that are commanded by a leader
+            let terrainID = HexMap[this.hexLabel].terrainID || "None";
+            let followers = [];
+            _.each(Elements,element => {
+                if (element.nation === this.nation && element.id !== this.id && element.rank === 0 && ((this.type.includes("Vehicle") && element.type.includes("Vehicle")) || (this.type.includes("Vehicle") === false && element.type.includes("Vehicle") === false))) {
+                    let d = element.Distance(this);
+                    let terrainID2 = HexMap[element.hexLabel].terrainID || "None";
+                    if (d < 2 && terrainID === terrainID2 && (this.rank > 1 || (this.rank === 1 && this.sectionID === element.sectionID))) {
+                        followers.push(element);
+                    }
+                }
+            })
+            return followers;
         }
 
 
@@ -2118,83 +2134,100 @@ log(weaponArray)
         let status = element.Status();
         let action = Tag[2];
         let weaponNum = Tag[3] || "";
-        let targetElement = Elements[Lookup(Tag[4])] || "";
-        if (!element) {
+        let target = Elements[Lookup(Tag[4])];
+        if (!element || action === "Fire" && !target) {
             sendChat("","Not in Array");
             return;
         }
-   
-       //check if element in CC
-        let cc = false;
-        let elementHex = HexMap[element.hexLabel];
-        let neighbourCubes = elementHex.cube.neighbours();
-        ccLoop:
-        for (let c=0;c<neighbourCubes.length;c++) {
-            let hex = HexMap[neighbourCubes[c].label()];
-            if (hex && hex.tokenIDs.length > 0) {
-                for (let i=0;i<hex.tokenIDs.length;i++) {
-                    let el2 = Elements[hex.tokenIDs[i]];
-                    if (el2.nation !== element.nation) {
-                        cc = true;
-                        break ccLoop;
-                    }
-                }
-            }
-        }
-        //build target array and check if any in CC
-        //also check if LOS is valid
-        //can save that and reuse in Fire
 
-        
-        let targetCC = false;
-        let targets = [];
-        if (targetElement) {
-            targets = [targetElement];
-            if (targetElement.type !== "Individual") {
-                let leader = targetElement.Leader();
-                if (shooter.individual === "Sniper") {
-                    targets = [leader];
-                } else {
-                    targets.push(leader);
-                }
-            };
-            if (HexMap[targetElement.hexLabel].terrain.includes("Building")) {
-                let terrainID = HexMap[targetElement.hexLabel].terrainID;
-                _.each(Elements,element => {
-                    let hex = HexMap[element.hexLabel];
-                    if (hex.terrainID === terrainID) {
-                        targets.push(element);
-                    }
-                })
-            }
-        }
+        SetupCard(element.name,action,element.nation);
 
-
-
+        let errorMsg = [];
+        let targetLOS;
         if (action === "Fire") {
-            for (let i=0;i<targets.length;i++) {
-                let target = targets[i];
-                let neighbourCubes = HexMap[target.hexLabel].cube.neighbours();
-                ccLoop2:
-                for (let c=0;c<neighbourCubes.length;c++) {
-                    let hex = HexMap[neighbourCubes[c].label()];
-                    if (hex && hex.tokenIDs.length > 0) {
-                        for (let i=0;i<hex.tokenIDs.length;i++) {
-                            let el2 = Elements[hex.tokenIDs[i]];
-                            if (el2.nation !== target.nation) {
-                                targetCC = true;
-                                break ccLoop2;
+            targetLOS = LOS(element,target);
+        }
+
+        let toCheck = [element];
+        if (element.leader) {
+            toCheck.concat(element.Followers());
+        } else {
+            toCheck.concat(element.Leader());
+        }
+
+       //check if element or attached leader is in CC
+        for (let i=0;i<toCheck.length;i++) {
+            if (toCheck.token.get(SM.CC) === true) {
+                errorMsg.push("Element is locked in Close Combat and may not take any Actions");
+                break;
+            }
+        }
+
+        //if fire, build up the info and check for CC 
+        if (action === "Fire" && errorMsg.length === 0) {
+    //mortars
+            FireInfo = {};
+            if (targetLOS.los === true) {
+                if (element.individual === "Sniper") {
+                    if (target.token.get(SM.CC) === true) {
+                        errorMsg.push(target.name + " is locked in Close Combat and may not be fired at");
+                    } else {
+                        FireInfo = {
+                            shooter: element,
+                            targets: [target],
+                            losResult: targetLOS,
+                        }
+                    }
+                } else {
+                    let targets = [target];
+                    //is target in a building ? If so, ALL in building added
+                    if (HexMap[target.hexLabel].terrain.includes("Building")) {
+                        let terrainID = HexMap[target.hexLabel].terrainID;
+                        let targets = [];
+                        _.each(Elements,element => {
+                            if (element.id !== target.id) {
+                                let hex = HexMap[element.hexLabel];
+                                if (hex.terrainID === terrainID) {
+                                    targets.push(element);
+                                }
+                            }
+                        })
+                    } else {
+                        if (target.leader === true) {
+                            let follower = target.Followers()[0];
+                            if (follower) {
+                                targets.unshift(follower);
+                            }
+                        } else {
+                            let leader = target.Leader();
+                            if (leader) {
+                                targets.push(leader);
                             }
                         }
                     }
-                }
+                    let inCC = false;
+                    for (let i=0;i<targets.length;i++) {
+                        if (targets[i].token.get(SM.CC) === true) {
+                            inCC = targets[i].name;
+                            break;
+                        } 
+                    }
+                    if (inCC === false) {
+                        FireInfo = {
+                            shooter: element,
+                            targets: targets,
+                            losResult: targetLOS,
+                        }
+                    } else {
+                        errorMsg.push(inCC + " is locked in Close Combat and may not be fired at");
+                    }
+                } 
+            } else {
+                errorMsg.push("No LOS to Target");
             }
         }
 
-        SetupCard(element.name,action,element.nation);
         
-        let errorMsg = [];
-
         if (element.token.get("aura1_color") === "#000000" && action !== "Opp Fire") {
             errorMsg.push("Element already finished its Actions");
         }
@@ -2228,8 +2261,6 @@ log(weaponArray)
         if (action === "Fire" && element.spot === true && element.recon === true) {
             errorMsg.push("Recon Element cannot Fire if it Spotted");
         }
-
-
         if (action !== "Rally" && status === "Broken") {
             errorMsg.push("Element Broken, can only Rally");
         }
@@ -2243,13 +2274,7 @@ log(weaponArray)
         if (action === "Fire" && element.token.get(SM.oppfire) === true) {
             errorMsg.push("Element has already Opp Fired this Phase");
         }
-//maybe only if distance is 1
-        if (cc === true && action !== "Fire") {
-            errorMsg.push("Element is locked in Close Combat and may not take any Actions");
-        }
-        if (targetCC === true && action !== "Fire") {
-            errorMsg.push("Target is locked in Close Combat and may not be Fired upon");
-        }
+
         if (action === "Fire" && status === "Suppressed") {
             errorMsg.push("Suppressed Units may not Fire");
         }
@@ -2377,8 +2402,25 @@ log(weaponArray)
 
 
 
-
-
+    const CCCheck = (element) => {
+        let result = false;
+        let elementHex = HexMap[element.hexLabel];
+        let neighbourCubes = elementHex.cube.neighbours();
+        ccLoop:
+        for (let c=0;c<neighbourCubes.length;c++) {
+            let hex = HexMap[neighbourCubes[c].label()];
+            if (hex && hex.tokenIDs.length > 0) {
+                for (let i=0;i<hex.tokenIDs.length;i++) {
+                    let el2 = Elements[hex.tokenIDs[i]];
+                    if (el2.nation !== element.nation) {
+                        result = true;
+                        break ccLoop;
+                    }
+                }
+            }
+        }
+        return result;
+    }
 
 
     const CheckLOS = (msg) => {
@@ -2758,7 +2800,12 @@ log(result)
         delta = Math.abs(delta);
         if (delta === 0) {
             outputCard.body.push("The Combat ends in a Tie!");
-            outputCard.body.push("The remaining Elements remain Locked in Combat");
+            outputCard.body.push("All Elements remain Locked in Combat");
+            _.each(sides,group => {
+                _.each(group,ind => {
+                    Elements[ind].token.set(SM.CC, true);
+                })
+            })
         } else {
             outputCard.body.push(state.FbF.nations[winner] + " Wins!");
             if (onlyInd[winner] === true) {
