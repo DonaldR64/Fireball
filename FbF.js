@@ -196,9 +196,9 @@ const Main = (() => {
 
 
     const SM = {
-        ammo: "status_red",
+        ammo: "status_oneshot::5503748",
         oppfire: "status_Shell::5553215",
-        CC: "status_blue", //locked in CC
+        CC: "status_AFK::2006501", //locked in CC
 
 
     }
