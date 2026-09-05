@@ -952,6 +952,7 @@ log(weaponArray)
                     } else if (status === "Broken") {
                         let word = (reason === "CC") ? " must ":" may ";
                         outputCard.body.push(this.name + " remains Broken and" + word +"make a Rout Move");
+                        this.SetAct("Routing");
                     }
                 } else if (fail === 1) {
                     if (status === "Good" || status === "Suppressed") {
@@ -964,7 +965,7 @@ log(weaponArray)
                     }
                 } else if (fail > 1) {
                     outputCard.body.push(this.name + " is Eliminated");
-                    this.SetStatus("Routed");
+                    this.SetStatus("Eliminated");
                 }
             } else if (reason === "Charge") {
                 if (fail === 0) {
@@ -974,7 +975,7 @@ log(weaponArray)
                     }
 
                     if (leader) {
-                        if (leader.token.get("aura1_color") === "#000000") {
+                        if (leader.Act() === "Activated") {
                             outputCard.body.push(leader.name + " may also be Charged if desired");
                         } else {
                             leader.notes.push("Leader Tag Along");
@@ -994,7 +995,7 @@ log(weaponArray)
                         outputCard.body.push("The Sniper stays Hidden");
                     } else {
                         outputCard.body.push("The Sniper is Spotted");
-                        this.SetStatus("Revealed");
+                        this.Reveal();
                     }
                 }
             }
@@ -1021,50 +1022,81 @@ log(weaponArray)
             return status;
         }
 
-        SetStatus(status) {
-            if (status === "Good") {
-                let tc = this.token.get("tint_color");
-                if (tc === "#ffff00" || tc === "#ff0000") {
-                    tc = "transparent";
-                }
+        Act() {
+            let active;
+            let aura = this.token.get("aura1_color");
+            if (aura === "#000000") {
+                active = "Activated";
+            } else if (aura === "#ffffff") {
+                active = "Unactivated";
+            } else if (aura === "#00ff00") {
+                active = "Active Section";
+            } else if (aura === "#ff0000") {
+                active = "Routing";
+            }
+            return active;
+        }
+
+        SetStatus(newStatus) {
+            if (newStatus === "Good") {
                 this.token.set({
-                    tint_color: tc,
-                    aura1_color: "#00ff00",
+                    tint_color: "transparent",
                 })            
-            } else if (status === "Broken") {
+            } else if (newStatus === "Broken") {
                 this.token.set({
                     tint_color: "#ff0000",
-                    aura1_color: "#ff0000",
                 })  
-            } else if (status === "Suppressed") {
+            } else if (newStatus === "Suppressed") {
                 this.token.set({
                     tint_color: "#ffff00",
-                    aura1_color: "#ffff00",
                 })  
-            } else if (status === "Routed") {
+            } else if (newStatus === "Eliminated") {
                 this.token.set("status_dead",true);
-            } else if (status === "Activated") {
+            }
+        }
+            
+        SetAct(newAct) {
+            if (newAct === "Routing") {
+                this.token.set({
+                    aura1_color: "#ff0000",
+                })
+            } else if (newAct === "Activated") {
                 this.token.set({
                     aura1_color: "#000000",
                 })
-            } else if (status === "Current Section") {
+            } else if (newAct === "Unactivated") {
                 this.token.set({
                     aura1_color: "#ffffff",
                 })
-            } else if (status === "Current Element") {
+            } else if (newAct === "Active Section") {
                 this.token.set({
-                    aura1_color: "#0000ff",
+                    aura1_color: "#00ff00",
                 })
-            } else if (status === 'Revealed') {
-                this.token.set({
-                    tint_color: "transparent",
-                })
-                //twin if not already
             }
+        }
+            
+        Reveal() {
+            this.token.set({
+                    tint_color: "transparent",
+            })
+            //twin if not already
+        }
 
-
+        Conceal() {
+            this.token.set({
+                    tint_color: "#000000",
+            })
+            //untwin
+            //which map ????
 
         }
+
+
+
+
+
+
+
 
 
 
@@ -1969,9 +2001,7 @@ log(weaponArray)
         state.FbF.unitsLeftToActivate = DeepCopy(state.FbF.unitNumbers);
         SetupCard("Turn " + turn,"","Neutral");
         _.each(Elements,element => {
-            if (element.Status() !== "Broken") {
-                element.SetStatus("Good");
-            }
+            element.SetAct("Unactivated");
         })
 
 
@@ -2132,6 +2162,7 @@ log(weaponArray)
         let Tag = msg.content.split(";");
         let element = Elements[Lookup(Tag[1])];
         let status = element.Status();
+        let act = element.Act();
         let action = Tag[2];
         let weaponNum = Tag[3] || "";
         let weapon;
@@ -2237,7 +2268,7 @@ log(weaponArray)
         }
 
         
-        if (element.token.get("aura1_color") === "#000000" && action !== "Opp Fire") {
+        if (act === "Activated" && action !== "Opp Fire") {
             errorMsg.push("Element already finished its Actions");
         }
         if (action === "Rally" && element.rallied === true) {
@@ -2300,6 +2331,9 @@ log(weaponArray)
             PrintCard();
             return;
         }
+
+
+
 
 
         //is section already activated, if not, activate section
