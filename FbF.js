@@ -1202,7 +1202,12 @@ log(weaponArray)
 
         if (element.type !== "Initiative Token" && element.type !== "Marker") {
             //AddAbility("Info","!TokenInfo",element.charID);
-            AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",element.charID);
+            //AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",element.charID);
+            AddAbility("Activate Unit","!Activate",element.charID);
+
+
+
+
         }
 
         if (element.type === "Initiative Token") {
