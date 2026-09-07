@@ -9,7 +9,7 @@ const Main = (() => {
     let HexSize, HexInfo, DIRECTIONS;
     let MapInfo = {};
     let Elements = {};
-    let activeSectionID; //sectionID that just activated
+    let activeUnitID; //unitID that just activated
     let activeElementID; //last element that activated
     let FireInfo = {};
 
@@ -199,7 +199,7 @@ const Main = (() => {
         ammo: "status_oneshot::5503748",
         oppfire: "status_Shell::5553215",
         CC: "status_AFK::2006501", //locked in CC
-
+        targetfire: "status_red", //has taken targeting fire
 
     }
 
@@ -858,7 +858,7 @@ log(weaponArray)
             this.notes = [];
 
 
-            this.sectionID = state.FbF.sectionIDs[id] || "None";
+            this.unitID = state.FbF.unitIDs[id] || "None";
             let index = HexMap[label].tokenIDs.indexOf(id);
             if (index < 0) {
                 HexMap[label].tokenIDs.push(id);
@@ -892,8 +892,9 @@ log(weaponArray)
             let target = this.morale;
             if (reason === "Rally" && this.recon === false && this.leader === false) {target = 6};
             let leader = this.Leader();
+log(leader)
             let codicil = "";
-            if (leader && leader.morale > target) {
+            if (leader && leader.morale < target) {
                 target = leader.morale;
                 codicil = " [Leader]";
             } 
@@ -929,8 +930,12 @@ log(weaponArray)
                 if (fail === 0) {
                     if (status === "Good") {
                         if (reason === "Firing") {
-                            outputCard.body.push(this.name + " is Suppressed");
-                            this.SetStatus("Suppressed");
+                            if (this.unitID === activeUnitID || this.leader === true) {
+                                outputCard.body.push(this.name + " remains in Good Order");
+                            } else {
+                                outputCard.body.push(this.name + " is Suppressed");
+                                this.SetStatus("Suppressed");
+                            }
                         } else if (reason === "CC") {
                             if (this.type === "Individual") {
                                 outputCard.body.push(this.name + " stays alive and is in Good Order");
@@ -1030,7 +1035,7 @@ log(weaponArray)
             } else if (aura === "#ffffff") {
                 active = "Unactivated";
             } else if (aura === "#00ff00") {
-                active = "Active Section";
+                active = "Active Unit";
             } else if (aura === "#ff0000") {
                 active = "Routing";
             }
@@ -1045,7 +1050,9 @@ log(weaponArray)
             } else if (newStatus === "Broken") {
                 this.token.set({
                     tint_color: "#ff0000",
+                    aura1_color: "#ff0000",
                 })  
+                this.token.set(SM.CC,false);
             } else if (newStatus === "Suppressed") {
                 this.token.set({
                     tint_color: "#ffff00",
@@ -1068,7 +1075,7 @@ log(weaponArray)
                 this.token.set({
                     aura1_color: "#ffffff",
                 })
-            } else if (newAct === "Active Section") {
+            } else if (newAct === "Active Unit") {
                 this.token.set({
                     aura1_color: "#00ff00",
                 })
@@ -1103,14 +1110,14 @@ log(weaponArray)
 
         Leader() {
             //returns highest adjacent leader with rank > this
-            //if platoon leader only if is in same section/sectionID
+            //if platoon leader only if is in same unit/unitID
             //if in an area, leader has to be in same area ie same building etc
             let leader;
             let leaderRank=0;
             let terrainID = HexMap[this.hexLabel].terrainID || "None";
             _.each(Elements,element => {
                 if (element.nation === this.nation && element.leader === true && element.id !== this.id && element.rank > this.rank && element.Status() !== "Broken") {
-                    if (element.rank > 1 || (element.rank === 1 && element.sectionID === this.sectionID)) {
+                    if (element.rank > 1 || (element.rank === 1 && element.unitID === this.unitID)) {
                         let d = element.Distance(this);
                         let terrainID2 = HexMap[element.hexLabel].terrainID || "None";
                         if (d < 2 && terrainID === terrainID2) {
@@ -1133,7 +1140,7 @@ log(weaponArray)
                 if (element.nation === this.nation && element.id !== this.id && element.rank === 0 && ((this.type.includes("Vehicle") && element.type.includes("Vehicle")) || (this.type.includes("Vehicle") === false && element.type.includes("Vehicle") === false))) {
                     let d = element.Distance(this);
                     let terrainID2 = HexMap[element.hexLabel].terrainID || "None";
-                    if (d < 2 && terrainID === terrainID2 && (this.rank > 1 || (this.rank === 1 && this.sectionID === element.sectionID))) {
+                    if (d < 2 && terrainID === terrainID2 && (this.rank > 1 || (this.rank === 1 && this.unitID === element.unitID))) {
                         followers.push(element);
                     }
                 }
@@ -1204,10 +1211,6 @@ log(weaponArray)
             //AddAbility("Info","!TokenInfo",element.charID);
             //AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",element.charID);
             AddAbility("Activate Unit","!Activate",element.charID);
-
-
-
-
         }
 
         if (element.type === "Initiative Token") {
@@ -1912,7 +1915,7 @@ log(weaponArray)
     const ClearState = (msg) => {
         let Tag = msg.content.split(";");
         LoadPage();
-        activeSectionID = "";
+        activeUnitID = "";
         activeElementID = "";
         CloseCombats = [];
 
@@ -1922,7 +1925,7 @@ log(weaponArray)
 
         //clear arrays
         Elements = {};
-        SectionArray = {};
+        UnitArray = {};
 
         state.FbF = {
             players: {},
@@ -1935,9 +1938,9 @@ log(weaponArray)
             losLines: [],
             markers: [],           
             closeCombat: false,
-            sectionIDs: {}, //ref by elementID - shows the sectionID
-            sectionMarkers: {}, //ref by sectionID - shows the marker
-            elements: {}, //ref by sectionID, shows all elementIDs in the section
+            unitIDs: {}, //ref by elementID - shows the unitID
+            unitMarkers: {}, //ref by unitID - shows the marker
+            elements: {}, //ref by unitID, shows all elementIDs in the unit
         }
         sendChat("","Cleared State/Arrays");
     }
@@ -2019,7 +2022,7 @@ log(weaponArray)
         if (state.FbF.unitsLeftToActivate[0] === 0 && state.FbF.unitsLeftToActivate[1] === 0) {
             NextTurn();
         } else {
-//set the previous sections auras to black to indicate they've activated
+//set the previous units auras to black to indicate they've activated
             let currentPlayer = state.FbF.currentPlayer;
             let deck = state.FbF.deck;
             if (currentPlayer === 2) {
@@ -2200,8 +2203,18 @@ log(weaponArray)
             }
         }
 
+        if (action === "Fire" && element.unitID !== activeUnitID) {
+            action = "Opp Fire";
+            if (target.Act() === "Routing") {
+                action = "Targeting Fire";
+            }
+        }
+        if (action !== "Opp Fire" && action !== "Targeting Fire" && act === "Unactivated") {
+            errorMsg.push("This Unit has not been Activated");
+        }
+
         //if fire, build up the info and check for CC 
-        if (action === "Fire" && errorMsg.length === 0) {
+        if (action.includes("Fire") && errorMsg.length === 0) {
     //mortars
             weapon = element.weaponArray[weaponNum];
             if (targetLOS.distance < weapon.effRange[0]) {
@@ -2210,7 +2223,11 @@ log(weaponArray)
 
             FireInfo = {};
             if (targetLOS.los === true) {
-                if (element.individual === "Sniper") {
+                if (action === "Targeting Fire" && target.token.get(SM.targetfire)) {
+                    errorMsg.push(target.name + " has already taken Targeting Fire");
+                }
+                //single targets for sniper or targeting fire
+                if (element.individual === "Sniper" || action === "Targeting Fire") {
                     if (target.token.get(SM.CC) === true) {
                         errorMsg.push(target.name + " is locked in Close Combat and may not be fired at");
                     } else {
@@ -2256,21 +2273,23 @@ log(weaponArray)
                             break;
                         } 
                     }
-                    if (inCC === false) {
+
+                    if (inCC !== false) {
+                        errorMsg.push(inCC + " is locked in Close Combat and may not be fired at");
+                    } else {
                         FireInfo = {
                             weapon: weapon,
                             shooter: element,
                             targets: targets,
                             losResult: targetLOS,
                         }
-                    } else {
-                        errorMsg.push(inCC + " is locked in Close Combat and may not be fired at");
                     }
                 } 
             } else {
                 errorMsg.push("No LOS to Target");
             }
         }
+
 
         
         if (act === "Activated" && action !== "Opp Fire") {
@@ -2283,7 +2302,7 @@ log(weaponArray)
             errorMsg.push("Element already Moved");
         }
         if (action === "Charge" && (element.fired === true || element.spotted === true || element.rallied === true)) {
-            errorMsg.push("Element cannot Charge due to its other Actions");
+            errorMsg.push("Element cannot Charge due to other Actions this turn");
         }
         if (action === "Fire" && element.fired === true) {
             errorMsg.push("Element already Fired");
@@ -2315,14 +2334,12 @@ log(weaponArray)
         if (action === "Reload" && element.token.get(SM.ammo) === false) {
             errorMsg.push("Element is not Out of Ammo/Jammed");
         }
-        if (action === "Fire" && element.token.get(SM.oppfire) === true && weapon.notes.includes("Machinegun") === false) {
+        if (action === "Opp Fire" && element.token.get(SM.oppfire) === true && weapon.notes.includes("Machinegun") === false) {
             errorMsg.push("Element has already Opp Fired this Phase");
         }
-
-        if (action === "Fire" && status === "Suppressed") {
+        if (action === "Opp Fire" && status === "Suppressed") {
             errorMsg.push("Suppressed Units may not Fire");
         }
-
         if (action.includes("Fire") && element.individual.includes("Sniper") && HexMap[element.hexLabel].terrain.includes("Sniper") === false) {
             errorMsg.push("Sniper can only Fire from one of his Prepared Nests");
         }
@@ -2338,56 +2355,18 @@ log(weaponArray)
         }
 
 
-
-
-
-        //is section already activated, if not, activate section
-        if (element.sectionID !== activeSectionID && action !== "Opp Fire") {
-            //prev active section now all done
-            let elementIDs = state.FbF.elements[activeSectionID];
-            _.each(elementIDs,elementID => {
-                let element = Elements[elementID];
-                if (element && element.token) {
-                    element.token.set("aura1_color","#000000");
-                }
-            })
-            //clear new section, set auras etc
-            activeSectionID = element.sectionID;
-            elementIDs = state.FbF.elements[activeSectionID];
-            _.each(elementIDs,elementID => {
-                let element2 = Elements[elementID];
-                let status = element2.Status();
-                if (status === "Broken") {
-                    element2.SetStatus("Broken");
-                } else {
-                    element2.SetStatus("Current Section");
-                }
-                element2.moved = false;
-                element2.fired = false;
-                element2.rallied = false;
-                element2.spotted = false;
-                element2.endSpot = false;
-                element2.notes = [];
-            })
-            //clear all oppfires
-            _.each(Elements,element => {
-                element.token.set(SM.oppfire,false);
-            })
-        }
-
-//if not current element and not opp fire - fix
-        if (action !== "Opp Fire") {
+        //marks prev element as activated, and if prev moved and hasnt done an 'EndSpot', does that
+        if (action !== "Opp Fire" && action !== "Targeting Fire") {
             if (element.id !== activeElementID) {
                 let element2 = Elements[activeElementID];
                 if (element2) {
-                    element2.SetStatus("Activated");
+                    element2.SetAct("Activated");
                     if (element2.moved === true && element2.endSpot === false) {
                         EndSpot(element2);
                         element2.endSpot = true;
                     }            
                 }
                 activeElementID = element.id;
-                element.SetStatus("Current Element");
             } else {
                 if (element.moved === true && element.endSpot === false) {
                     EndSpot(element);
@@ -2422,8 +2401,12 @@ log(weaponArray)
             case 'Reload':
                 Reload(element);
                 break;
-
-
+            case 'Opp Fire':
+                Fire("Opp Fire");
+                break;
+            case 'Targeting Fire':
+                Fire("Targeting Fire");
+                break;
         }
 
 
@@ -2690,12 +2673,12 @@ log(result)
         let refElement = Elements[msg.selected[0]._id];
         let group = AdjacentTokens(msg.selected[0]._id);
 
-        if (refElement.sectionID !== activeSectionID) {
+        if (refElement.unitID !== activeUnitID) {
             let err = true;
             let unactivated = (refElement.token.get("aura1_color") === "#00ff00") ? true:false;
             for (let i=0;i<group.length;i++) {
                 let ind = Elements[group[i]];
-                if (ind.sectionID === activeSectionID) {
+                if (ind.unitID === activeUnitID) {
                     refElement = ind;
                     err = false;
                     break;
@@ -2853,14 +2836,14 @@ log(result)
             outputCard.body.push(state.FbF.nations[winner] + " Wins!");
             outputCard.body.push("[hr]");
             if (onlyInd[winner] === true) {
-                outputCard.body.push("They hold off the enemy long enough to get away. They must immediately conduct a rout move, ending the rout move in good-order. They are subject to Targetting Fire.");
+                outputCard.body.push("They hold off the enemy long enough to get away. They must immediately conduct a rout move, ending the rout move in good-order. They are subject to targeting Fire.");
             } else {
                 remaining = CCLoser(sides[loser],delta);
                 if (remaining.Routing.length > 0 || remaining["Routing Indiv"].length > 0) {
-                    outputCard.body.push("Any Routing Elements are subject to Targetting Fire");
+                    outputCard.body.push("Any Routing Elements are subject to targeting Fire");
                 }
                 if (remaining.Good.length === 0 && remaining["Good Indiv"].length > 0) {
-                    outputCard.body.push("All  Individuals must also make a Rout Move even if in Good Order as there are no remaining Unbroken Troops. They are subject to Targetting Fire.")
+                    outputCard.body.push("All  Individuals must also make a Rout Move even if in Good Order as there are no remaining Unbroken Troops. They are subject to targeting Fire.")
                 }
                 if (remaining.Good.length === 0 && remaining["Good Indiv"].length === 0 && remaining.Routing.length === 0 && remaining["Routing Indiv"].length === 0) {
                     outputCard.body.push("All " + state.FbF.nations[loser].short + " Elements were eliminated or Surrendered");
@@ -2999,7 +2982,7 @@ log(result)
                 tokens.push(token);
             }
         }
-        let sectionMarkers = [0,0];
+        let unitMarkers = [0,0];
         let Surnames = DeepCopy(SurnameList);
         let unitNumbers = [0,0];
 
@@ -3014,7 +2997,7 @@ log(result)
 
         for (let i=0;i<groups.length;i++) {
             let group = groups[i];
-            let sectionID = stringGen();
+            let unitID = stringGen();
             let elementMarker = "None";
             let refElement = Elements[group[0]];
             let groupLetter = "";
@@ -3033,9 +3016,9 @@ log(result)
                 continue;
             }
             if (refElement.player < 2) {
-                elementMarker = Nations[refElement.nation].elementmarkers[sectionMarkers[refElement.player]];
-                groupLetter = rowLabels[sectionMarkers[refElement.player]];
-                state.FbF.sectionMarkers[sectionID] = elementMarker;
+                elementMarker = Nations[refElement.nation].elementmarkers[unitMarkers[refElement.player]];
+                groupLetter = rowLabels[unitMarkers[refElement.player]];
+                state.FbF.unitMarkers[unitID] = elementMarker;
                 unitNumbers[refElement.player]++;
             };
 
@@ -3054,7 +3037,7 @@ log(result)
                     num++;
                     name += " " + groupLetter + "/" + num;
                 }
-                let a1c = "#00ff00";
+                let a1c = "#ffffff";
                 let tint = "#000000";
 
 
@@ -3074,19 +3057,19 @@ log(result)
                     disableTokenMenu: true,
                 })
                 element.name = name;
-                element.sectionID = sectionID;
+                element.unitID = unitID;
                 if (elementMarker !== "None") {
                     element.token.set("status_" + elementMarker,true);
                 }
 
 
-                state.FbF.sectionIDs[element.id] = sectionID;
+                state.FbF.unitIDs[element.id] = unitID;
                 AddAbilities(element);
             }
             if (elementMarker !== "None") {
-                sectionMarkers[refElement.player]++;
+                unitMarkers[refElement.player]++;
             }
-            state.FbF.elements[sectionID] = elementIDs;
+            state.FbF.elements[unitID] = elementIDs;
         }
 
         sendChat("","Armies Added")
@@ -3094,6 +3077,50 @@ log(result)
 
 
     }
+
+    const Activate = (msg) => {
+        let element = Elements[msg.selected[0]._id];
+        if (!element) {return};
+        let currentAct = element.Act();
+        if (currentAct === "Activated" || currentAct === "Active Unit") {
+            sendChat("","Unit already Activated");
+            return;
+        }
+        let lastElement = Elements[activeElementID];
+        if (lastElement) {
+            lastElement.SetAct("Activated");
+        }
+        let elementIDs = state.FbF.elements[element.unitID];
+        let title = element.name;
+        let newList = [];
+        _.each(elementIDs,elementID => {
+            element2 = Elements[elementID];
+            if (element2) {
+                element2.SetAct("Active Unit");
+                element2.moved = false;
+                element2.fired = false;
+                element2.rallied = false;
+                element2.spotted = false;
+                element2.endSpot = false;
+                element2.notes = [];
+                if (element2.leader === true) {
+                    title = element2.name;
+                }
+                newList.push(elementID);
+            }
+        })
+        //clear all oppfires
+        _.each(Elements,element => {
+            element.token.set(SM.oppfire,false);
+        })
+        SetupCard(title + "'s Unit","",element.nation);
+        outputCard.body.push("Unit is now Activated");
+        PrintCard();
+        activeUnitID = element.unitID;
+        state.FbF.elements[element.unitID] = newList;
+    }
+
+
 
 
 
@@ -3143,7 +3170,7 @@ log(result)
         if (element.leader === true && element.Status() === "Good") {            
             //leader in good order can rally all adjacent units in command structure
             if (element.rank === 1) {
-                _.each(state.FbF.elements[element.sectionID],id2 => {
+                _.each(state.FbF.elements[element.unitID],id2 => {
                     let element2 = Elements[id2];
                     if (element2.id !== element.id && element2.Status() === "Broken") {
                         let d = element2.Distance(element);
@@ -3173,9 +3200,8 @@ log(result)
         element.rallied = true;
     }
 
-    const Fire = () => {
-let fireType = "Normal";
-//opp vs targeted vs normal
+    const Fire = (fireType = "Active Fire") => {
+
         let weapon = FireInfo.weapon;
         let shooter = FireInfo.shooter;
         let targets = FireInfo.targets;
@@ -3212,7 +3238,7 @@ let fireType = "Normal";
 
         sendPing(targets[0].token.get("left"),targets[0].token.get("top"),Campaign().get("playerpageid"),null,true);
 
-        SetupCard(shooter.name,"Weapons Fire",shooter.nation);
+        SetupCard(shooter.name,fireType,shooter.nation);
 
         outputCard.body.push("Firing " + weapon.name);
 
@@ -3245,103 +3271,114 @@ log(ammoRoll1 + " " + ammoRoll2)
 
         } else {
             if (targets[0].type.includes("Vehicle") === false) {
-                let drm = 0;
-                if (fireType === "Opp" && cover === 0) {
-                    targetTips.push("Moving in Open Ground +1");
-                    drm++;
-                }
-                if (cover < 2 && targets[0].type === "Individual") {
-                    targetTips.push("Individual -1");
-                    drm--;
-                }
-                if (cover > 1) {
-                    targetTips.push("Target in Hard Cover -1");
-                    drm--;
-                }
-                if (losResult.distance <= bonusRange) {
-                    targetTips.push("Target within Range Dice +1");
-                    drm++;
-                }
-                if (shooter.token.get(SM.oppfire)) {
-                    targetTips.push("Machinegun Multiple Opp Fire -1");
-                    drm--;
-                }
-
-                let hits = 0;
-                let whiteRolls = [];
-                let redRolls = [];
-                for (let i=0;i<redDice;i++) {
+                if (fireType === "Targeting Fire") {
                     let roll = randomInteger(6);
-                    redRolls.push(roll);
+                    outputCard.body.push("Roll: " + DisplayDice(roll,Nations[shooter.nation].dice,24));
                     if (roll === 6) {
-                        hits++;
+                        outputCard.body.push(targets[0].name + " is Eliminated!");
+                        targets[0].SetStatus("Eliminated");
+                    } else {
+                        outputCard.body.push(targets[0].name + " survives");
+                        targets[0].token.set(SM.targetfire,true);
                     }
-                }
-                redRolls = redRolls.sort().reverse();
-
-                let needRed4 = (weapon.notes.includes("4+ on Red")) ? true:false;
-                if (needRed4) {
-                    targetTips.push("White also needs Red 4+");
-                }
-
-                let finalTip = "";
-                _.each(targetTips,tip => {
-                    finalTip += tip + "<br>";
-                })
-                if (targetTips.length > 0) {
-                    finalTip += "------------<br>";
-                }
-                finalTip += rangedTip;
-
-                for (let i=0;i<whiteDice;i++) {
-                    let roll = Math.max(1,Math.min(randomInteger(6) + drm,6));
-                    whiteRolls.push(roll);
-                    if (needRed4 && redRolls.every(num => num < 4)) {
-                        continue;
-                    }
-                    if (roll > 4) {
-                        hits++
-                    }
-                }
-                whiteRolls = whiteRolls.sort().reverse();
-                whiteDisplay = "";
-                _.each(whiteRolls,roll => {
-                    whiteDisplay += DisplayDice(roll,"White",24) + " "; 
-                })
-                redDisplay = "";
-                _.each(redRolls,roll => {
-                    redDisplay += DisplayDice(roll,"Red",24) + " "; 
-                })
-
-                let line = '[Rolls: ](#" class="showtip" title="' + finalTip + ')';   
-                line += whiteDisplay + redDisplay;
-
-                outputCard.body.push(line);
-
-                if (hits === 0) {
-                    outputCard.body.push("All Shots Miss");
                 } else {
-                    let s = hits === 1 ? "":"s";
-                    let s2 = targets.length === 1 ? "The Target takes ":"The Targets take ";
-                    outputCard.body.push(s2 + hits + " Hit" + s);
-                    outputCard.body.push("[hr]")
-                    let max = (shooter.individual === "Sniper") ? 1:hits;
-                    _.each(targets,target => {
-                        target.Morale("Firing",hits,max);
+                    let drm = 0;
+                    if (fireType === "Opp Fire" && cover === 0) {
+                        targetTips.push("Moving in Open Ground +1");
+                        drm++;
+                    }
+                    if (cover < 2 && targets[0].type === "Individual") {
+                        targetTips.push("Individual -1");
+                        drm--;
+                    }
+                    if (cover > 1) {
+                        targetTips.push("Target in Hard Cover -1");
+                        drm--;
+                    }
+                    if (losResult.distance <= bonusRange) {
+                        targetTips.push("Target within Range Dice +1");
+                        drm++;
+                    }
+                    if (shooter.token.get(SM.oppfire)) {
+                        targetTips.push("Machinegun Multiple Opp Fire -1");
+                        drm--;
+                    }
+
+                    let hits = 0;
+                    let whiteRolls = [];
+                    let redRolls = [];
+                    for (let i=0;i<redDice;i++) {
+                        let roll = randomInteger(6);
+                        redRolls.push(roll);
+                        if (roll === 6) {
+                            hits++;
+                        }
+                    }
+                    redRolls = redRolls.sort().reverse();
+
+                    let needRed4 = (weapon.notes.includes("4+ on Red")) ? true:false;
+                    if (needRed4) {
+                        targetTips.push("White also needs Red 4+");
+                    }
+
+                    let finalTip = "";
+                    _.each(targetTips,tip => {
+                        finalTip += tip + "<br>";
                     })
+                    if (targetTips.length > 0) {
+                        finalTip += "------------<br>";
+                    }
+                    finalTip += rangedTip;
+
+                    for (let i=0;i<whiteDice;i++) {
+                        let roll = Math.max(1,Math.min(randomInteger(6) + drm,6));
+                        whiteRolls.push(roll);
+                        if (needRed4 && redRolls.every(num => num < 4)) {
+                            continue;
+                        }
+                        if (roll > 4) {
+                            hits++
+                        }
+                    }
+                    whiteRolls = whiteRolls.sort().reverse();
+                    whiteDisplay = "";
+                    _.each(whiteRolls,roll => {
+                        whiteDisplay += DisplayDice(roll,"White",24) + " "; 
+                    })
+                    redDisplay = "";
+                    _.each(redRolls,roll => {
+                        redDisplay += DisplayDice(roll,"Red",24) + " "; 
+                    })
+
+                    let line = '[Rolls: ](#" class="showtip" title="' + finalTip + ')';   
+                    line += whiteDisplay + redDisplay;
+
+                    outputCard.body.push(line);
+
+                    if (hits === 0) {
+                        outputCard.body.push("All Shots Miss");
+                    } else {
+                        let s = hits === 1 ? "":"s";
+                        let s2 = targets.length === 1 ? "The Target takes ":"The Targets take ";
+                        outputCard.body.push(s2 + hits + " Hit" + s);
+                        outputCard.body.push("[hr]")
+                        let max = (shooter.individual === "Sniper") ? 1:hits;
+                        _.each(targets,target => {
+                            target.Morale("Firing",hits,max);
+                        })
+                    }
+
+
+
+
+
+
+
+
+
+
+
                 }
-
-
-
-
-
-
-
-
-
-
-
-
             } else {
 
 
@@ -3354,14 +3391,13 @@ log(ammoRoll1 + " " + ammoRoll2)
 
 
 
-        if (fireType === "Opp") {
+        if (fireType === "Opp Fire") {
             shooter.token.set(SM.oppfire,true);
-        } else {
+        } else if (fireType === "Active Fire") {
             shooter.fired = true;
         }
-
         if (shooter.individual !== "Sniper") {
-            shooter.token.set("tint_color","transparent");
+            shooter.Reveal();
         } else {
             outputCard.body.push("[hr]");
             shooter.Morale("Sniper");
@@ -3486,7 +3522,9 @@ log(ammoRoll1 + " " + ammoRoll2)
             case '!CloseCombat':
                 CloseCombat(msg);
                 break;
-
+            case '!Activate':
+                Activate(msg);
+                break;
 
 
 
