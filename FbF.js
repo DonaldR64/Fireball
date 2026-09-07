@@ -2006,6 +2006,8 @@ log(leader)
         turn++;
         state.FbF.currentPlayer = 2;
         state.FbF.turn = turn;
+        activeUnitID = "";
+        activeElementID = "";
         state.FbF.unitsLeftToActivate = DeepCopy(state.FbF.unitNumbers);
         SetupCard("Turn " + turn,"","Neutral");
         _.each(Elements,element => {
@@ -2022,7 +2024,16 @@ log(leader)
         if (state.FbF.unitsLeftToActivate[0] === 0 && state.FbF.unitsLeftToActivate[1] === 0) {
             NextTurn();
         } else {
-//set the previous units auras to black to indicate they've activated
+            if (activeUnitID) {
+                let elementIDs = state.FbF.elements[activeUnitID];
+                _.each(elementIDs,elementID => {
+                    let element = Elements[elementID];
+                    if (element) {
+                        element.SetAct("Activated");
+                    }
+                })
+            }
+
             let currentPlayer = state.FbF.currentPlayer;
             let deck = state.FbF.deck;
             if (currentPlayer === 2) {
@@ -3256,11 +3267,11 @@ log(result)
 log(ammoRoll1 + " " + ammoRoll2)
             if (ammoRoll1 === 1 && ammoRoll2 < 3) {
                 if (shooter.type.includes("Vehicle")) {
-                    ammoDisplay = "Weapons Running Low on Ammo or a Weapon Jammed";
+                    outputCard.body.push("Weapons Running Low on Ammo or a Weapon Jammed");
                 } else {
-                    ammoDisplay = "Weapon Jammed or Ran out of Ammo";
+                    outputCard.body.push("Weapon Jammed or Ran out of Ammo");
+                    shooter.token.set(SM.ammo,true);
                 }
-                shooter.token.set(SM.ammo,true);
             }
         }
 
