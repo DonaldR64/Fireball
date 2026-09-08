@@ -128,7 +128,8 @@
                 </section>
 
                 <section class="special f-center">
-                    
+                    <h3><span name="attr_fadisplay"></span></h3>
+                    <h3><span name="attr_sadisplay"></span></h3>
                 </section>
 
                 <section class="common">
@@ -198,8 +199,17 @@
 
 
     on("change:armour change:type change:speed sheet:opened", function() {
-        getAttrs(["character_name","quality"], function(values) {
+        getAttrs(["character_name","quality","armourF","armourS"], function(values) {
 
+            let farmour = values.armourF || "";
+            let sarmour = values.armourS || "";
+            let farmourDis, sarmourDis;
+            if (farmour !== "") {
+                farmourDis = "Front Armour: " + farmour;
+            }
+            if (sarmour !== "") {
+                sarmourDis = "Side Armour: " + sarmour;
+            }
 
             let name = values.character_name || '';
             name = name.split(",");
@@ -215,6 +225,8 @@
                 "quality": quality,
                 "name1": name1,
                 "name2": name2,
+                "fadisplay": farmourDis,
+                "sadisplay": sarmourDis,
             }); 
         });
     });
