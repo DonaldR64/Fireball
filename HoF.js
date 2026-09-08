@@ -156,22 +156,19 @@ const Main = (() => {
 
     //terrain that is single object
     //blockLOS - 
-    //cover is 1 - soft, 2 - hard, blockLOS - # of hexes past that can be seen, height - stories
+    // blockLOS - # of hexes past that can be seen, height - stories
     const TerrainInfo = {
-        "Trench": {cover: 2, conceal: true, blockLOS: false, height: 0,interCover: 0},
-        "Building 1 Storey": {cover: 2, conceal: true, blockLOS: "Past", height: 1},
-        "Building 2 Storey": {cover: 2, conceal: true, blockLOS: "Past", height: 2},
-        "Orchard": {cover: 1, conceal: "Infantry", blockLOS: false, height: 2, interCover: 1},
-        "Woods": {cover: 1, conceal: true, blockLOS: "Past", height: 3},
-        "Fields": {cover: "Soft Cover for Stationary Infantry", conceal: "Infantry", blockLOS: false, height: 0, interCover: 0},
-        "Gun Pit": {cover: 2, conceal: false, blockLOS: "Past", height: .5},
-        "Sniper's Nest": {cover: 2, conceal: true, blockLOS: false, height: 0},
+        "Trench": {cover: true, conceal: true, blockLOS: false, height: 0,interCover: 0},
+        "Building 1 Storey": {cover: true, conceal: true, blockLOS: 1, height: 1},
+        "Building 2 Storey": {cover: true, conceal: true, blockLOS: 1, height: 2},
+        "Woods": {cover: false, conceal: true, blockLOS: 2, height: 3},
+        "Fields": {cover: false, conceal: "Infantry", blockLOS: false, height: 0, interCover: 0},
     }
 
     const EdgeInfo = {
-        "Bocage": {cover: "Hard Cover for Infantry/Crewed Weapons, Soft Cover for Vehicles", conceal: true, blockLOS: "1 Hex", height: 2},
-        "Hedge": {cover: "Soft Cover for Infantry against Hedge", conceal: "Infantry & Crewed Weapons", blockLOS: false, height: 0},
-        "Wall": {cover: 'Hard Cover for Teams against Wall', conceal: "Infantry & Crewed Weapons", blockLOS: false, height: 0},
+        "Bocage": {cover: true, conceal: true, blockLOS: 1, height: 2},
+        "Hedge": {cover: false, conceal: true, blockLOS: false, height: 0},
+        "Wall": {cover: true, conceal: TextTrackCue, blockLOS: false, height: 0},
     }
 
 
