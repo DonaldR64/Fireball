@@ -123,13 +123,16 @@
                     <h2><span name="attr_name2"></span></h2>
                     <hr>
                     <h3>Quality: <span name="attr_quality"></span></h3>
-                    <h4><span name="attr_notes"></span></h4>
-
+                    <h3><span name="attr_notes"></span></h3>
                 </section>
 
-                <section class="special f-center">
-                    <h3><span name="attr_fadisplay"></span></h3>
-                    <h3><span name="attr_sadisplay"></span></h3>
+
+                <input type="hidden" name="attr_armourdisplay" class="armour-status" value="Off">
+                <section class="armour f-center">
+                    <hr>
+                    <h3>Armour</h3>
+                    <h3>Front: <span name="attr_armourF"></span></h3>
+                    <h3>Side: <span name="attr_armourS"></span></h3>
                 </section>
 
                 <section class="common">
@@ -199,34 +202,28 @@
 
 
     on("change:armour change:type change:speed sheet:opened", function() {
-        getAttrs(["character_name","quality","armourF","armourS"], function(values) {
+        getAttrs(["character_name","quality","armourF",type], function(values) {
 
             let farmour = values.armourF || "";
-            let sarmour = values.armourS || "";
-            let farmourDis, sarmourDis;
-            if (farmour !== "") {
-                farmourDis = "<hr>Front Armour: " + farmour;
-            }
-            if (sarmour !== "") {
-                sarmourDis = "Side Armour: " + sarmour;
-            }
 
             let name = values.character_name || '';
             name = name.split(",");
             let name1 = name[0].trim();
-            let name2 = name[1].trim();
+            let name2 = name[1].trim() || "";
             
             let quality = values.quality || 'Regular';
 
-
-
+            let type = values.type;
+            let armourdisplay = "Off";
+            if (type === "Vehicle" && farmour !== "") {
+                armourdisplay = "On";
+            }
 
             setAttrs({
                 "quality": quality,
                 "name1": name1,
                 "name2": name2,
-                "fadisplay": farmourDis,
-                "sadisplay": sarmourDis,
+                "armourdisplay": armourdisplay
             }); 
         });
     });

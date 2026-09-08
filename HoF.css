@@ -44,8 +44,8 @@ main {
     grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr;
     grid-template-areas:"common   common    common  header   header"
                         "common   common    common  header   header"
-                        "common   common    common  special  special"
-                        "common   common    common  special  special"
+                        "common   common    common  header  header"
+                        "common   common    common  armour  armour"
                         "weapon   weapon    weapon  weapon   weapon"
                         "weapon   weapon    weapon  weapon   weapon";
   }
@@ -134,16 +134,6 @@ section {
   color: white;
 }
 
-.special {
-    grid-area: special;
-    flex-direction: center;
-    border-style: none;
-}
-
-.special h3{
-  text-align: center;
-  color: white;
-}
 
 .common {
     grid-area: common;
@@ -223,3 +213,18 @@ input[type="hidden"][value="Off"].weapon3-status ~ .weapon3{
     padding: 3px;
 }
 
+/*Armour */
+input[type="hidden"][value="Off"].armour-status ~ .armour{
+    display: none;
+}
+
+.armour {
+    grid-area: special;
+    flex-direction: center;
+    border-style: none;
+}
+
+.armour h3{
+  text-align: center;
+  color: white;
+}
