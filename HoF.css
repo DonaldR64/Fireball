@@ -219,7 +219,7 @@ input[type="hidden"][value="Off"].armour-status ~ .armour{
 }
 
 .armour {
-    grid-area: special;
+    grid-area: armour;
     flex-direction: center;
     border-style: none;
 }
