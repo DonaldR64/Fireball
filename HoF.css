@@ -143,10 +143,6 @@ section {
   }
 
 
-.info h3{
-  text-align: center;
-  color: white;
-}
 
 
 
@@ -241,7 +237,3 @@ input[type="hidden"][value="Off"].armour-status ~ .armour{
     background-color:  white;
 }
 
-.armour h3{
-  text-align: center;
-  color: white;
-}
