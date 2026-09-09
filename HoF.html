@@ -13,7 +13,8 @@
             <label for="attr_type">Type:</label>
             <select name="attr_type">
                 <option value="" selected disabled hidden>Choose here</option>
-                <option value="Infantry">Infantry</option>
+                <option value="Infantry Team">Infantry Team</option>
+                <option value="Small Team">Small Team</option>
                 <option value="Gun">Gun</option>
                 <option value="Vehicle">Vehicle</option>
                 <option value="System Token">System Token</option>
@@ -45,6 +46,9 @@
         <div class="col">
             <h3>Team Notes</h3>
             <input type="text" name="attr_notes">
+
+
+
         </div>
 
 
@@ -124,7 +128,7 @@
                 </section>
 
                 <section class="info f-center">
-                    <h3><span name="attr_quality"></span> Quality</h3>
+                    <h3><span name="attr_quality"></span> <span name="attr_type"></span></h3>
                     <h3><span name="attr_notes"></span></h3>
                 </section>
 
