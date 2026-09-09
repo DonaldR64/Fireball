@@ -158,11 +158,12 @@ const Main = (() => {
     //blockLOS - 
     // blockLOS - # of hexes past that can be seen, height - stories
     const TerrainInfo = {
-        "Trench": {cover: true, conceal: true, blockLOS: false, height: 0,interCover: 0},
-        "Building 1 Storey": {cover: true, conceal: true, blockLOS: 1, height: 1},
-        "Building 2 Storey": {cover: true, conceal: true, blockLOS: 1, height: 2},
-        "Woods": {cover: false, conceal: true, blockLOS: 2, height: 3},
-        "Fields": {cover: false, conceal: "Infantry", blockLOS: false, height: 0, interCover: 0},
+        "Trench": {cover: true, conceal: true, blockLOS: false, height: 0,interCover: 0, type: "Very Difficult"},
+        "Building 1 Storey": {cover: true, conceal: true, blockLOS: 1, height: 1, type: "Very Difficult"},
+        "Building 2 Storey": {cover: true, conceal: true, blockLOS: 1, height: 2, type: "Very Difficult"},
+        "Woods": {cover: false, conceal: true, blockLOS: 2, height: 3, type: "Difficult"},
+        "Fields": {cover: false, conceal: "Infantry", blockLOS: false, height: 0,  type: "Difficult"},
+        "Road": {cover: false, conceal: false, blockLOS: false, height: 0,  type: "Road"},
     }
 
     const EdgeInfo = {
