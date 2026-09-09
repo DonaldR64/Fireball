@@ -41,12 +41,11 @@ main {
     height: 450px;
     grid-gap: 4px;
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr;
     grid-template-areas:"common   common    common  header   header"
                         "common   common    common  header   header"
                         "common   common    common  header   header"
                         "common   common    common  header   header"
-                        "weapon   weapon    weapon  weapon   weapon"
                         "weapon   weapon    weapon  weapon   weapon"
                         "weapon   weapon    weapon  weapon   weapon";
   }
