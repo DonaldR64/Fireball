@@ -41,10 +41,12 @@ main {
     height: 450px;
     grid-gap: 4px;
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
     grid-template-areas:"common   common    common  header   header"
                         "common   common    common  header   header"
                         "common   common    common  header   header"
+                        "common   common    common  header   header"
+                        "weapon   weapon    weapon  weapon   weapon"
                         "weapon   weapon    weapon  weapon   weapon"
                         "weapon   weapon    weapon  weapon   weapon";
   }
@@ -195,6 +197,20 @@ input[type="hidden"][value="Off"].weapon2-status ~ .weapon2{
 }
 
 .weapon2 {
+    display: grid;
+    grid-gap: 1px;
+    grid-template-columns:  3fr 2fr 1fr 1fr 1fr 2fr;
+    grid-template-rows: 1fr;
+    text-align: center;
+    align-items: center;
+    padding: 3px;
+}
+/* Weapon 3 */
+input[type="hidden"][value="Off"].weapon3-status ~ .weapon3{
+    display: none;
+}
+
+.weapon3 {
     display: grid;
     grid-gap: 1px;
     grid-template-columns:  3fr 2fr 1fr 1fr 1fr 2fr;
