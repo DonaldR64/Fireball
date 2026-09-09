@@ -115,12 +115,9 @@
                 <section class="header f-center">
                     <h1><span name="attr_name1"></span></h1>
                     <h2><span name="attr_name2"></span></h2>
-                </section>
-
-                <section class="info f-center">
                     <h3><span name="attr_quality"></span> <span name="attr_type"></span></h3>
+                    <h3><span name="attr_vehdisplay"></span></h3>
                     <h3><span name="attr_notes"></span></h3>
-                    <h3><span name="attr_vehclass"></span></h3>
                 </section>
 
 
@@ -186,9 +183,7 @@
 
 
     on("change:armour change:type change:speed sheet:opened", function() {
-        getAttrs(["character_name","quality"], function(values) {
-
-            let farmour = values.armourF || "";
+        getAttrs(["character_name","quality","vehclass"], function(values) {
 
             let name = values.character_name || '';
             name = name.split(",");
@@ -197,10 +192,16 @@
             
             let quality = values.quality || 'Regular';
 
+            let vehdisplay = values.vehclass || "";
+            if (vehdisplay) {
+                vehdisplay = "Class " + vehdisplay;
+            }
+
             setAttrs({
                 "quality": quality,
                 "name1": name1,
                 "name2": name2,
+                "vehdisplay": vehdisplay,
             }); 
         });
     });
