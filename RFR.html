@@ -17,7 +17,6 @@
                 <option value="Gun">Gun</option>
                 <option value="Vehicle">Vehicle</option>
                 <option value="System Token">System Token</option>
-
             </select>
             <label for="attr_quality">Quality:</label>
             <select name="attr_quality">
@@ -25,6 +24,13 @@
                 <option value="Elite">Elite</option>
                 <option value="Poor">Poor</option>
             </select>
+            <label>Road:</label><input type="text" name="attr_roadspeed">
+            <label>CC:</label><input type="text" name="attr_ccspeed">
+
+
+
+
+
 
             <br>            
             <label for="attr_nation">Nation:</label>
@@ -38,15 +44,19 @@
             </select>
         </div>
         <div class="col">
-            <h3>Vehicle Info</h3>
-            <label>Vehicle Class:</label><input type="text" name="attr_vehclass">
+            <label for="attr_vehclass">Vehicle Class:</label>
+            <select name="attr_vehclass">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+            </select>        
         </div>
         <div class="col">
             <h3>Team Notes</h3>
             <input type="text" name="attr_notes">
-
-
-
         </div>
 
 
@@ -117,7 +127,7 @@
                     <h2><span name="attr_name2"></span></h2>
                     <h3><span name="attr_quality"></span> <span name="attr_type"></span></h3>
                     <h3><span name="attr_vehdisplay"></span></h3>
-                    <h3><span name="attr_notes"></span></h3>
+                    <h3><span name="attr_speeddisplay"></span></h3>
                 </section>
 
 
@@ -183,13 +193,19 @@
 
 
     on("change:armour change:type change:speed sheet:opened", function() {
-        getAttrs(["character_name","quality","vehclass"], function(values) {
+        getAttrs(["character_name","quality","vehclass","roadspeed","ccspeed"], function(values) {
 
             let name = values.character_name || '';
             name = name.split(",");
             let name1 = name[0].trim();
             let name2 = name[1].trim() || "";
             
+            let speeddisplay = "";
+            let road = values.roadspeed;
+            let cc = values.ccspeed;
+            speeddisplay = "Speed: " + cc + " / " + "Road: " + road; 
+
+
             let quality = values.quality || 'Regular';
 
             let vehdisplay = values.vehclass || "";
@@ -202,6 +218,7 @@
                 "name1": name1,
                 "name2": name2,
                 "vehdisplay": vehdisplay,
+                "speeddisplay": speeddisplay,
             }); 
         });
     });
