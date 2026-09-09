@@ -1,0 +1,207 @@
+<input type="hidden" class="sheet-tabstoggle" name="attr_sheetTab"  value="display"  />
+<div>
+    <button type="action" name="act_input">Input</button>
+    <button type="action" name="act_display">Display</button>
+</div>
+
+<div class="sheet-input">
+    <div class="2colrow">
+        <div class="col">
+            <h3>Team Information</h3>
+            <label>Name:</label><input type="text" name="attr_character_name">
+            <br>
+            <label for="attr_type">Type:</label>
+            <select name="attr_type">
+                <option value="" selected disabled hidden>Choose here</option>
+                <option value="Infantry Team">Infantry Platoon</option>
+                <option value="Gun">Gun</option>
+                <option value="Vehicle">Vehicle</option>
+                <option value="System Token">System Token</option>
+
+            </select>
+            <label for="attr_quality">Quality:</label>
+            <select name="attr_quality">
+                <option value="Regular">Regular</option>
+                <option value="Elite">Elite</option>
+                <option value="Poor">Poor</option>
+            </select>
+
+            <br>            
+            <label for="attr_nation">Nation:</label>
+            <select name="attr_nation">
+                <option value="" selected disabled hidden>Choose here</option>
+                <option value="USA">USA</option>
+                <option value="Germany">Germany</option>
+                <option value="Soviet">Soviet Union</option>
+                <option value="UK">United Kingdom</option>
+                <option value="Neutral">Neutral</option>
+            </select>
+        </div>
+        <div class="col">
+            <h3>Vehicle Info</h3>
+            <label>Vehicle Class:</label><input type="text" name="attr_vehclass">
+        </div>
+        <div class="col">
+            <h3>Team Notes</h3>
+            <input type="text" name="attr_notes">
+
+
+
+        </div>
+
+
+
+
+
+    </div>    
+
+
+
+
+    <div class="row">
+        <h3>Weapons</h3>
+
+        <div class="weapons">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Equipped</th>
+                        <th>Name</th>
+                        <th>Range</th>
+                        <th>AT</th>
+                        <th>HE</th>
+                        <th>AP</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><select name="attr_weapon1equipped">
+                            <option value = "Off">Off</option>
+                            <option value = "Equipped">Equipped</option>
+                        </select></td>
+                        <td><input type="text" name="attr_weapon1name"></td>
+                        <td><input type="text" name="attr_weapon1range"></td>
+                        <td><input type="text" name="attr_weapon1at"></td>
+                        <td><input type="text" name="attr_weapon1he"></td>
+                        <td><input type="text" name="attr_weapon1ap"></td>
+                        <td><input type="text" name="attr_weapon1notes"></td>
+                    </tr>
+                    <tr>
+                        <td><select name="attr_weapon2equipped">
+                            <option value = "Off">Off</option>
+                            <option value = "Equipped">Equipped</option>
+                        </select></td>
+                        <td><input type="text" name="attr_weapon2name"></td>
+                        <td><input type="text" name="attr_weapon2range"></td>
+                        <td><input type="text" name="attr_weapon2at"></td>
+                        <td><input type="text" name="attr_weapon2he"></td>
+                        <td><input type="text" name="attr_weapon2ap"></td>
+                        <td><input type="text" name="attr_weapon2notes"></td>
+                    </tr>
+
+                </tbody>
+            </table>    
+        </div>   
+    </div>
+</div>
+
+
+<div class="sheet-display">
+    <input type="hidden" name="attr_nation"/>
+    <div class="mysheet">
+        <div class="attributes">
+            <main>
+                <section class="header f-center">
+                    <h1><span name="attr_name1"></span></h1>
+                    <h2><span name="attr_name2"></span></h2>
+                </section>
+
+                <section class="info f-center">
+                    <h3><span name="attr_quality"></span> <span name="attr_type"></span></h3>
+                    <h3><span name="attr_notes"></span></h3>
+                    <h3><span name="attr_vehclass"></span></h3>
+                </section>
+
+
+                <section class="common">
+                    <div>
+                        <img alt="Character Avatar" name="attr_character_avatar" style="width:auto;height:250px; bottom: 0;"/>
+                    </div>
+                </section>
+
+                <section class="weapon">    
+                    <div class="weaponinfo">
+                        <span>Name</span>    
+                        <span>Range</span>    
+                        <span>AT</span>    
+                        <span>HE</span>    
+                        <span>AP</span>    
+                        <span>Notes</span>
+                    </div>        
+                    <input type="hidden" name="attr_weapon1equipped" class="weapon1-status" value="Off">
+                    <div class="weapon1">
+                        <h4><span name="attr_weapon1name"></span></h4>
+                        <h4><span name="attr_weapon1range"></span></h4>
+                        <h4><span name="attr_weapon1at"></span></h4>
+                        <h4><span name="attr_weapon1he"></span></h4>
+                        <h4><span name="attr_weapon1ap"></span></h4>
+                        <h4><span name="attr_weapon1notes"></span></h4>
+                    </div>
+                    <input type="hidden" name="attr_weapon2equipped" class="weapon2-status" value="Off">
+                    <div class="weapon2">
+                        <h4><span name="attr_weapon2name"></span></h4>
+                        <h4><span name="attr_weapon2range"></span></h4>
+                        <h4><span name="attr_weapon2at"></span></h4>
+                        <h4><span name="attr_weapon2he"></span></h4>
+                        <h4><span name="attr_weapon2ap"></span></h4>
+                        <h4><span name="attr_weapon2notes"></span></h4>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>    
+</div>
+
+
+
+
+
+
+
+
+<script type="text/worker">
+    const buttonlist = ["input","display"];
+    buttonlist.forEach(button => {
+        on(`clicked:${button}`, function() {
+            setAttrs({
+                sheetTab: button
+            });
+        });
+    });
+
+    on("sheet:opened", function() {
+        setAttrs({sheetTab:"display"});
+    });
+
+
+    on("change:armour change:type change:speed sheet:opened", function() {
+        getAttrs(["character_name","quality"], function(values) {
+
+            let farmour = values.armourF || "";
+
+            let name = values.character_name || '';
+            name = name.split(",");
+            let name1 = name[0].trim();
+            let name2 = name[1].trim() || "";
+            
+            let quality = values.quality || 'Regular';
+
+            setAttrs({
+                "quality": quality,
+                "name1": name1,
+                "name2": name2,
+            }); 
+        });
+    });
+</script>
