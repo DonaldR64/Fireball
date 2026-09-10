@@ -977,6 +977,16 @@ log(weaponArray)
         for(let a=0;a<abilArray.length;a++) {
             abilArray[a].remove();
         } 
+        let platoonInfo = state.HoF.platoonInfo[team.platoonID];
+        if (team.type !== "System Token") {
+            let abilityName = "Activate ";
+            if (team.notes.includes("Leader") || platoonInfo.vehiclePlatoon) {
+                abilityName += "Platoon";
+            } else {
+                abilityName += "Team";
+            }
+            AddAbility(abilityName,"!Activate",team.charID);
+        }
 
 
 
@@ -1939,14 +1949,25 @@ log(result)
         return true;
     }
 
-    const QueryHero = (msgs) => {
-
-
-
-
-
-
+    const QueryHero = (msg) => {
+        let playerID = msg.playerid;
+        let nation = state.HoF.players[playerID];
+        if (!nation) {
+            sendChat("","Player not Registered");
+            return;
+        }
+        let player = state.HoF.nations.indexOf(nation);
+        let heroPoints = state.HoF.heroPoints[player];
+        SetupCard("Hero Points","",nation);
+        outputCard.body.push("You have " + heroPoints + " Remaining");
+        PrintCard(playerID);
     }
+
+
+
+
+
+
 
 
 
@@ -2018,7 +2039,9 @@ log(result)
     }
 
  
-
+    const Activate = (msg) => {
+        
+    }
 
 
 
@@ -2116,6 +2139,10 @@ log(result)
             case '!QueryHero':
                 QueryHero(msg);
                 break;
+            case '!Activate':
+                Activate(msg);
+                break;
+
 
         }
     };
