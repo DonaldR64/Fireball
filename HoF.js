@@ -16,6 +16,18 @@ const Main = (() => {
         UK: ["Smith","Jones","Williams","Taylor","Davies","Brown","Wilson","Evans","Thomas","Johnson","Roberts","Walker","Wright","Robinson","Thompson","White","Hughes","Edwards","Green","Lewis","Wood","Harris","Martin","Jackson","Clarke"],
     }
 
+    let FirstNameList = {
+        Germany: [],
+        Soviet: [],
+        USA: [],
+        UK: [],
+
+
+    }
+
+
+
+
     //math constants
     const M = {
         f0: Math.sqrt(3),
@@ -777,6 +789,7 @@ const Main = (() => {
             this.token = token;
             this.type = aa.type;
             this.quality = aa.quality;
+            this.notes = aa.notes || " ";
 
             let weaponArray = [];
             for (let w=1;w<3;w++) {
@@ -803,13 +816,10 @@ const Main = (() => {
             }
 log(weaponArray)
 
-
-
-
             this.weaponArray = weaponArray;
 
 
-            this.unitID = state.HoF.unitIDs[id] || "None";
+            this.platoonID = state.HoF.platoonIDs[id] || "None";
             let index = HexMap[label].tokenIDs.indexOf(id);
             if (index < 0) {
                 HexMap[label].tokenIDs.push(id);
@@ -833,147 +843,12 @@ log(weaponArray)
 
         }
 
-        Morale(reason,number = 1,maxFail = number) {
-            if (this.notes.includes("Leader Tag Along")) {
-                //auto pass
-                outputCard.body.push(this.name +" can Charge into contact, ending its Turn");
-                this.notes.splice(this.notes.indexOf("Leader Tag Along"),1);
-                return;
-            }
-            let target = this.morale;
-            if (reason === "Rally" && this.recon === false && this.leader === false) {target = 6};
-            let leader = this.Leader();
-log(leader)
-            let codicil = "";
-            if (leader && leader.morale < target) {
-                target = leader.morale;
-                codicil = " [Leader]";
-            } 
-            let status = this.Status();
-
-            let rolls = [];
-            let fail = 0;
-            let pass = 0;
-            for (let i=0;i<number;i++) {
-                let roll = randomInteger(6);
-                rolls.push(roll);
-                if (roll < target || roll === 1) {
-                    fail++;
-                } else {pass++};
-            }
-            fail = Math.min(maxFail,fail);
-
-            rolls.sort().reverse();
-            let line = this.name + ": ";
-            _.each(rolls,roll => {
-                line += DisplayDice(roll,this.nation,24) + " ";
-            })
-            line += " vs. " + target + "+" + codicil;
-            outputCard.body.push(line);
-            if (reason === "Rally") {
-                if (fail > 0) {
-                    outputCard.body.push(this.name + " fails to Rally");
-                } else {
-                    outputCard.body.push(this.name + " Rallies");
-                    this.SetStatus("Good");
-                }
-            } else if (reason === "Firing" || reason === "CC") {
-                if (fail === 0) {
-                    if (status === "Good") {
-                        if (reason === "Firing") {
-                            if (this.unitID === activeUnitID || this.leader === true) {
-                                outputCard.body.push(this.name + " remains in Good Order");
-                            } else {
-                                outputCard.body.push(this.name + " is Suppressed");
-                                this.SetStatus("Suppressed");
-                            }
-                        } else if (reason === "CC") {
-                            if (this.type === "Individual") {
-                                outputCard.body.push(this.name + " stays alive and is in Good Order");
-                            } else {
-                                outputCard.body.push(this.name + " remains in Good Order");
-                            }
-                        }
-                    } else if (status === "Suppressed") {
-                        if (reason === "Firing") {
-                            outputCard.body.push(this.name + " remains Suppressed");
-                        } else if (reason === "CC") {
-                            if (this.type === "Individual") {
-                                outputCard.body.push(this.name + " stays alive and is in Good Order");
-                            } else {
-                                outputCard.body.push(this.name + " remains in Good Order");
-                            }
-                            this.SetStatus("Good");
-                        }
-                    } else if (status === "Broken") {
-                        let word = (reason === "CC") ? " must ":" may ";
-                        outputCard.body.push(this.name + " remains Broken and" + word +"make a Rout Move");
-                        this.SetAct("Routing");
-                    }
-                } else if (fail === 1) {
-                    if (status === "Good" || status === "Suppressed") {
-                        let word = (reason === "CC") ? " must ":" may ";
-                        outputCard.body.push(this.name + " is now Broken and"+ word + "make a Rout Move");
-                        this.SetStatus("Broken");
-                    } else if (status === "Broken") {
-                        outputCard.body.push(this.name + " is Eliminated");
-                        this.SetStatus("Routed");
-                    }
-                } else if (fail > 1) {
-                    outputCard.body.push(this.name + " is Eliminated");
-                    this.SetStatus("Eliminated");
-                }
-            } else if (reason === "Charge") {
-                if (fail === 0) {
-                    outputCard.body.push(this.name + " can Charge into contact, ending its Turn");
-                    if (this.moved === true) {
-                        outputCard.body.push("Its total movement can't be more than " + this.move + "hexes");
-                    }
-
-                    if (leader) {
-                        if (leader.Act() === "Activated") {
-                            outputCard.body.push(leader.name + " may also be Charged if desired");
-                        } else {
-                            leader.notes.push("Leader Tag Along");
-                            outputCard.body.push(leader.name + " when activated, may choose to Charge, without needing a Morale Test");
-                        }
-                    }
-                } else {
-                    outputCard.body.push(this.name + " stays where it is, and cannot move any further this Turn");
-                }
-            } else if (reason === "Sniper") {
-                if (fail === 0) {
-                    outputCard.body.push("The Sniper stays Hidden");
-                } else {
-//could maybe modify to be based on # of possible spotters, then give them a spot roll each, stopping if one makes it
-                    let roll2 = randomInteger(6);
-                    if (roll2 > 2) {
-                        outputCard.body.push("The Sniper stays Hidden");
-                    } else {
-                        outputCard.body.push("The Sniper is Spotted");
-                        this.Reveal();
-                    }
-                }
-            }
-
-        }
-
-
-
-
-
 
         Status() {
-            let status = "Unknown"
+            let status = "Good";
             let tint = this.token.get("tint_color");
-            if (tint === "transparent" || tint === "#000000") {
-                status = "Good";
-            }
             if (tint === "#ffff00") {
                 status = "Suppressed";
-            }
-            if (tint === "#ff0000") {
-                status = "Broken";
             }
             return status;
         }
@@ -986,9 +861,7 @@ log(leader)
             } else if (aura === "#ffffff") {
                 active = "Unactivated";
             } else if (aura === "#00ff00") {
-                active = "Active Unit";
-            } else if (aura === "#ff0000") {
-                active = "Routing";
+                active = "Active";
             }
             return active;
         }
@@ -998,12 +871,6 @@ log(leader)
                 this.token.set({
                     tint_color: "transparent",
                 })            
-            } else if (newStatus === "Broken") {
-                this.token.set({
-                    tint_color: "#ff0000",
-                    aura1_color: "#ff0000",
-                })  
-                this.token.set(SM.CC,false);
             } else if (newStatus === "Suppressed") {
                 this.token.set({
                     tint_color: "#ffff00",
@@ -1014,11 +881,7 @@ log(leader)
         }
             
         SetAct(newAct) {
-            if (newAct === "Routing") {
-                this.token.set({
-                    aura1_color: "#ff0000",
-                })
-            } else if (newAct === "Activated") {
+            if (newAct === "Activated") {
                 this.token.set({
                     aura1_color: "#000000",
                 })
@@ -1026,78 +889,13 @@ log(leader)
                 this.token.set({
                     aura1_color: "#ffffff",
                 })
-            } else if (newAct === "Active Unit") {
+            } else if (newAct === "Active") {
                 this.token.set({
                     aura1_color: "#00ff00",
                 })
             }
         }
             
-        Reveal() {
-            this.token.set({
-                    tint_color: "transparent",
-            })
-            //twin if not already
-        }
-
-        Conceal() {
-            this.token.set({
-                    tint_color: "#000000",
-            })
-            //untwin
-            //which map ????
-
-        }
-
-
-
-
-
-
-
-
-
-
-
-        Leader() {
-            //returns highest adjacent leader with rank > this
-            //if platoon leader only if is in same unit/unitID
-            //if in an area, leader has to be in same area ie same building etc
-            let leader;
-            let leaderRank=0;
-            let terrainID = HexMap[this.hexLabel].terrainID || "None";
-            _.each(Teams,team => {
-                if (team.nation === this.nation && team.leader === true && team.id !== this.id && team.rank > this.rank && team.Status() !== "Broken") {
-                    if (team.rank > 1 || (team.rank === 1 && team.unitID === this.unitID)) {
-                        let d = team.Distance(this);
-                        let terrainID2 = HexMap[team.hexLabel].terrainID || "None";
-                        if (d < 2 && terrainID === terrainID2) {
-                            if (leaderRank < team.rank) {
-                                leader = team;
-                                leaderRank = team.rank;
-                            }
-                        }
-                    }
-                }
-            })
-            return leader;
-        }
-
-        Followers() {
-            //returns adjacent teams that are commanded by a leader
-            let terrainID = HexMap[this.hexLabel].terrainID || "None";
-            let followers = [];
-            _.each(Teams,team => {
-                if (team.nation === this.nation && team.id !== this.id && team.rank === 0 && ((this.type.includes("Vehicle") && team.type.includes("Vehicle")) || (this.type.includes("Vehicle") === false && team.type.includes("Vehicle") === false))) {
-                    let d = team.Distance(this);
-                    let terrainID2 = HexMap[team.hexLabel].terrainID || "None";
-                    if (d < 2 && terrainID === terrainID2 && (this.rank > 1 || (this.rank === 1 && this.unitID === team.unitID))) {
-                        followers.push(team);
-                    }
-                }
-            })
-            return followers;
-        }
 
 
        
@@ -1835,10 +1633,9 @@ log(leader)
             turn: 0,
             currentPlayer: 2,
             losLines: [],
-            markers: [],           
-            unitIDs: {}, //ref by teamID - shows the unitID
-            unitMarkers: {}, //ref by unitID - shows the marker
-            teamIDs: {}, //ref by unitID, shows all teamIDs in the unit
+            platoonMarkers: [0,0], //# of platoons for each player
+            platoonIDs: {}, //ref by teamID - shows the platoonID
+            platoonInfo: {}, //ref by platoonID - shows the name, marker,all starting teamIDs
         }
         sendChat("","Cleared State/Arrays");
     }
@@ -2160,96 +1957,62 @@ log(result)
 
 
 
-    const SetArmies = () => {
-        Teams = {};
-        let tokens = findObjs({
-            _pageid: Campaign().get("playerpageid"),
-            _type: "graphic",
-            _subtype: "token",
-            layer: "objects",
-        });
+    const AddPlatoon = (msg) => {
+        let platoon = [];
+        let teamIDs = [];
 
-        let unitMarkers = [0,0];
-        let Surnames = DeepCopy(SurnameList);
-        let unitNumbers = [0,0];
-
-        for (let i=0;i<tokens.length;i++) {
-            let token = tokens[i];
+        for (let i=0;i<msg.selected.length;i++) {
+            let token = getObj("graphic",msg.selected[i]._id);
             let character = getObj("character", token.get("represents"));   
             if (!character) {continue};
             let team = new Team(token.get("id"));
+            platoon.push(team);
+            teamIDs.push(team.id);
         }
 
-        let groups = AdjacentTokens();
-
-        for (let i=0;i<groups.length;i++) {
-            let group = groups[i];
-            let unitID = stringGen();
-            let teamMarker = "None";
-            let refTeam = Teams[group[0]];
-            let groupLetter = "";
-
-            if (refTeam.player < 2) {
-                teamMarker = Nations[refTeam.nation].platoonmarkers[unitMarkers[refTeam.player]];
-                groupLetter = rowLabels[unitMarkers[refTeam.player]];
-                state.HoF.unitMarkers[unitID] = teamMarker;
-                unitNumbers[refTeam.player]++;
-            };
-
-            let teamIDs = [];
-            let num = 0;
-            for (let j=0;j<group.length;j++) {
-                let team = Teams[group[j]];
-                teamIDs.push(team.id);
-                let name = team.charName.split(",")[0].trim();
-                if (team.type === "Individual") {
-                    name = Nations[team.nation][team.individual];
-                    let index = randomInteger(Surnames[team.nation].length) - 1;
-                    let surname = Surnames[team.nation].splice(index,1);
-                    name += " " + surname;
-                } else {
-                    num++;
-                    name += " " + groupLetter + "/" + num;
-                }
-                let a1c = "#ffffff";
-                let tint = "#000000";
-
-
-                team.token.set({
-                    name: name,
-                    aura1_color: a1c,
-                    aura1_radius: 5,
-                    aura2_color: "transparent",
-                    showplayers_aura1: true,
-                    tooltip: "",
-                    show_tooltip: true,
-                    showplayers_tooltip: true,
-                    showplayers_name: true,
-                    statusmarkers: "",
-                    tint_color: tint,
-                    disableSnapping: false,
-                    disableTokenMenu: true,
-                })
-                team.name = name;
-                team.unitID = unitID;
-                if (teamMarker !== "None") {
-                    team.token.set("status_" + teamMarker,true);
-                }
-
-
-                state.HoF.unitIDs[team.id] = unitID;
-                AddAbilities(team);
-            }
-            if (teamMarker !== "None") {
-                unitMarkers[refTeam.player]++;
-            }
-            state.HoF.teams[unitID] = teamIDs;
+        let platoonMarkerNum = state.HoF.platoonMarkers[platoon[0].player];
+        state.HoF.platoonMarkers[platoon[0].player] = platoonMarkerNum + 1;
+        let platoonID = stringGen();
+        let platoonName = msg.content.split(";")[1];
+        let platoonMarker = Nations[platoon[0].nation].platoonmarkers[platoonMarkerNum];
+        let platoonLetter = rowLabels[platoonMarkerNum];
+        let platoonInfo = {
+            name: platoonName,
+            marker: platoonMarker,
+            teamIDs: teamIDs,
         }
+        state.HoF.platoonInfo = platoonInfo;
 
-        sendChat("","Armies Added")
-        state.HoF.unitNumbers = unitNumbers;
+        let num = 0;
+        _.each(platoon,team => {
+            let name = team.charName.split(",")[0].trim();
+            if (team.notes.includes("Leader")) {
+                let surname = SurnameList[team.nation][randomInteger(SurnameList[team.nation].length) - 1];
+                let firstName = FirstNameList[team.nation][randomInteger(FirstNameList[team.nation].length) - 1];
+                name += " " + firstLetter + ". " + surname;
+            } else {
+                num++;
+                name += " " + platoonLetter + "/" + num;
+            }
 
-
+            team.token.set({
+                name: name,
+                aura1_color: "#ffffff",
+                aura1_radius: 5,
+                aura2_color: "transparent",
+                showplayers_aura1: true,
+                showplayers_name: true,
+                statusmarkers: "",
+                tint_color: "transparent",
+                disableSnapping: false,
+            })
+            team.name = name;
+            team.platoonID = platoonID;
+            team.token.set("status_" + platoonMarker,true);
+            state.HoF.platoonIDs[team.id] = platoonID;
+            AddAbilities(team);
+        });
+        sendChat("","Platoon Added")
     }
 
 
@@ -2322,8 +2085,8 @@ log(result)
             case '!Roll':
                 RollDice(msg);
                 break;
-            case '!SetArmies':
-                SetArmies(msg);
+            case '!AddPlatoon':
+                AddPlatoon(msg);
                 break;
 
 
