@@ -1,9 +1,8 @@
 const Main = (() => {
-    const version = '2026.8.28';
+    const version = '2026.9.10';
     if (!state.HoF) {state.HoF = {}};
 
     const pageInfo = {};
-    let page2ID;
     const rowLabels = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM","AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY","AZ","BA","BB","BC","BD","BE","BF","BG","BH","BI"];
 
     let HexSize, HexInfo, DIRECTIONS;
@@ -169,7 +168,7 @@ const Main = (() => {
     const EdgeInfo = {
         "Bocage": {cover: true, conceal: true, blockLOS: 1, height: 2},
         "Hedge": {cover: false, conceal: true, blockLOS: false, height: 0},
-        "Wall": {cover: true, conceal: TextTrackCue, blockLOS: false, height: 0},
+        "Wall": {cover: true, conceal: true, blockLOS: false, height: 0},
     }
 
 
@@ -786,9 +785,9 @@ const Main = (() => {
                 if (wequipped !== "Equipped") {continue};
                 let wname = aa[pre + "name"];
                 let wrange = aa[pre + "range"];
-                weff = weff.split("-").map(e => parseInt(e));
-                if (weff.length === 1) {
-                    weff.unshift(0);
+                wrange = wrange.split("-").map(e => parseInt(e));
+                if (wrange.length === 1) {
+                    wrange.unshift(0);
                 }
                 let wrof = parseInt(aa[pre + "rof"]);
                 let wat = parseInt(aa[pre + "at"]) || "-";
@@ -1443,11 +1442,6 @@ log(leader)
         pageInfo.width = pageInfo.page.get("width") * 70;
         pageInfo.height = pageInfo.page.get("height") * 70;
         pageInfo.type = pageInfo.page.get("grid_type");
-        let page2 = findObjs({_type: "page"}).filter((e) => e.get("name").includes("Copy of " + pageInfo.name))[0];
-        if (page2) {
-            page2ID = page2.id;
-        }
-        log("Page2 ID: " + page2ID)
     }
 
     const BuildMap = () => {
@@ -1505,12 +1499,17 @@ log(leader)
             layer: "objects",
         });
         
+        let s = 0;
         tokens.forEach((token) => {
             let character = getObj("character", token.get("represents"));   
             if (character) {
                 let team = new Team(token.get("id"));
+                s++;
             }
         });
+
+
+        log(s + " Teams added to Array");
 
     }
 
@@ -1536,15 +1535,6 @@ log(leader)
     
         //Add Token Terrain, Building might be multihex
         let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
-        if (page2ID) {
-            let tokens2 = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
-            for (let i=0;i<tokens2.length;i++) {
-                if (tokens.some(t => t.id === token.id)) {
-                    continue;
-                }
-                tokens.push(token);
-            }
-        }
 
         _.each(tokens,token => {
             let name = token.get("name") || " ";
@@ -1856,10 +1846,6 @@ log(leader)
 
     const RemoveDead = () => {
         let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
-        if (page2ID) {
-            let tokens2 = findObjs({_pageid: page2ID,_type: "graphic",_subtype: "token",layer: "map",});
-            tokens = tokens.concat(tokens2);
-        }
         _.each(tokens,token => {
             if (token.get("status_dead") === true) {
                 token.remove();
@@ -2357,7 +2343,7 @@ log(result)
         on('destroy:graphic',destroyGraphic);
     };
     on('ready', () => {
-        log("===> Fireball Forward <===");
+        log("===> Hail of Fire <===");
         log("===> Software Version: " + version + " <===")
         LoadPage();
         DefineHexInfo();
