@@ -193,7 +193,7 @@ const Main = (() => {
 
 
     const SM = {
-        
+        RFP: "status_red",
 
     }
 
@@ -896,6 +896,22 @@ log(weaponArray)
             }
         }
             
+        Check(modifier) {
+            let target = 4 + modifier;
+            let roll = randomInteger(6);
+            let success = false;
+            if (roll >= target) {
+                success = true;
+            }
+            let result = {
+                target: target,
+                roll: roll,
+                success: success,
+            }
+            return result;
+        }
+
+
 
 
        
@@ -1541,6 +1557,7 @@ log(weaponArray)
             currentPlayer: 2,
             firstPlayer: 2,
             heroPoints: [0,0],
+            orderPoints: [0,0],
             losLines: [],
             platoonMarkers: [0,0], //# of platoons for each player
             platoonIDs: {}, //ref by teamID - shows the platoonID of that TeamID
@@ -1559,7 +1576,69 @@ log(weaponArray)
         })
     }
 
+    const OrderPoints = (nation) => {
+        let points = 1;
+        //leaders
+        let leaders = 0;
+        let rolls = [];
+        _.each(Teams,team => {
+            if (team.nation === nation) {
+                if (team.notes.includes("Leader") && team.token.get(SM.RFP) === false) {
+                    leaders++;
+                    let roll = randomInteger(6);
+                    rolls.push(roll);
+                    if (roll > 3) {
+                        points++;
+                    }
+                }
+            }
+        })
+        //vehicle units
+        let vehicles = 0;
+        let platoonsInfo = state.HoF.platoonInfo;
+        _.each(platoonsInfo,platoonInfo => {
+            if (platoonInfo.vehiclePlatoon === true && platoonInfo.nation === nation) {
+                let ready = 0;
+                let ids = platoonInfo.teamIDs;
+                _.each(ids,id => {
+                    let team = Teams[id];
+                    if (team && team.Status() === "Ready" && team.token.get(SM.RFP) === false) {
+                        ready++;
+                    }
+                })
+                let percent = Math.round(ready/ids.length * 100);
+                if (percent >= 50) {
+                    vehicles++;
+                    let roll = randomInteger(6);
+                    rolls.push(roll);
+                    if (roll > 3) {
+                        points++;
+                    }
+                }
+            }
+        })
+        let tip = "Leaders: " + leaders;
+        tip += "<br>Vehicle Units: " + vehicles;
+        tip += "<br>Rolls: " + rolls.sort().reverse().toString();
+        tip += "<br>Needing 4+";
+        tip = '[' + points + '](#" class="showtip" title="' + tip + ')';   
 
+        let heroDice = randomInteger(6);
+        let heroPoints;
+        if (heroDice === 6) {
+            heroPoints = randomInteger(6);
+        }
+
+        
+        let results = {
+            orderPoints: points,
+            tip: tip,
+            heroPoints: heroPoints,
+        }
+
+        return results;
+
+    }
 
 
 
@@ -1587,26 +1666,37 @@ log(weaponArray)
             state.HoF.turn = turn;
         }
         let currentNation = state.HoF.nations[currentPlayer];
+        //hero points
         let heroPoints = state.HoF.heroPoints[currentPlayer];
         if (turn === 1) {
             heroPoints = Math.max(3,randomInteger(6));
             state.HoF.heroPoints[currentPlayer] = heroPoints;
-        } else {
-
-
-
-
         }
+        //order points
+        let orderPointArray = OrderPoints(currentNation);
+        let orderPoints = orderPointArray.orderPoints;
+        let heroDie = false;
+        if (orderPointArray.heroPoints) {
+            heroPoints = orderPointArray.heroPoints;
+            heroDie = true;
+        }
+
+
         //send hero points as a whisper
         let playerID = getKeyByValue(state.HoF.players,currentNation);
         SetupCard("Hero Points","",currentNation);
-        outputCard.body.push("Current Hero Points: " + heroPoints);
+        if (heroDie === true) {
+            outputCard.body.push("Hero Die Rolled a 6, Hero Points Reset");
+            outputCard.body.push("New Hero Points: " + heroPoints);
+        } else {
+            outputCard.body.push("Current Hero Points: " + heroPoints);
+        }
         PrintCard(playerID)
 
-        //send order points
+        let tip = orderPointArray.tip;
         SetupCard(currentNation + " Turn","Turn " + turn,currentNation);
-
-
+        outputCard.body.push("Order Points: " + tip);
+        state.HoF.orderPoints[currentPlayer] = orderPoints;
         PrintCard();
     }
 
@@ -1848,7 +1938,7 @@ log(result)
 
 
 
-        
+
     }
 
 
@@ -1859,7 +1949,7 @@ log(result)
     const AddPlatoon = (msg) => {
         let platoon = [];
         let teamIDs = [];
-
+        let vehiclePlatoon = true;
         for (let i=0;i<msg.selected.length;i++) {
             let token = getObj("graphic",msg.selected[i]._id);
             let character = getObj("character", token.get("represents"));   
@@ -1867,6 +1957,9 @@ log(result)
             let team = new Team(token.get("id"));
             platoon.push(team);
             teamIDs.push(team.id);
+            if (team.type !== "Vehicle") {
+                vehiclePlatoon = false;
+            }
         }
 
         let platoonMarkerNum = state.HoF.platoonMarkers[platoon[0].player];
@@ -1879,6 +1972,8 @@ log(result)
             name: platoonName,
             marker: platoonMarker,
             teamIDs: teamIDs,
+            vehiclePlatoon: vehiclePlatoon,
+            nation: platoon[0].nation,
         }
         state.HoF.platoonInfo[platoonID] = platoonInfo;
 
