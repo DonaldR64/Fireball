@@ -1670,7 +1670,6 @@ log(weaponArray)
         let heroPoints = state.HoF.heroPoints[currentPlayer];
         if (turn === 1) {
             heroPoints = Math.max(3,randomInteger(6));
-            state.HoF.heroPoints[currentPlayer] = heroPoints;
         }
         //order points
         let orderPointArray = OrderPoints(currentNation);
@@ -1680,6 +1679,7 @@ log(weaponArray)
             heroPoints = orderPointArray.heroPoints;
             heroDie = true;
         }
+        state.HoF.heroPoints[currentPlayer] = heroPoints;
 
 
         //send hero points as a whisper
