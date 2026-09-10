@@ -17,10 +17,10 @@ const Main = (() => {
     }
 
     let FirstNameList = {
-        Germany: [],
-        Soviet: [],
-        USA: [],
-        UK: [],
+        Germany: ["Hans","Peter","Klaus","Wolfgang","Jürgen","Dieter","Manfred","Uwe","Günter","Horst","Bernd","Karl","Werner","Heinz","Rolf","Rainer","Gerhard","Helmut","Michael","Gerd"],
+        Soviet: ["Aleksandr","Mikhail","Artem","Maksim", "Ivan","Dmitrt","Daniil","Matvey","Timofey","Aleksey","Sergey","Andrey","Roman","Mark","Vladimir","Nik","Kirill","Ilya","Egor","Nikolai"],
+        USA: ["Jim","Bob","John","Bill","Dick","David","Chuck","Tom","Mike","Ron","Larry","Don","Joe","Gary","George","Ken","Paul","Ed","Jerry","Dennis"],
+        UK: ["James","Robert","John","William","Richard","David","Charles","Thomas","Michael","Ronald","Donald","George","Edward","Arthur","Kenneth","Brian","Peter","Alan","Dennis","Raymond"],
 
 
     }
@@ -845,7 +845,7 @@ log(weaponArray)
 
 
         Status() {
-            let status = "Good";
+            let status = "Ready";
             let tint = this.token.get("tint_color");
             if (tint === "#ffff00") {
                 status = "Suppressed";
@@ -867,7 +867,7 @@ log(weaponArray)
         }
 
         SetStatus(newStatus) {
-            if (newStatus === "Good") {
+            if (newStatus === "Ready") {
                 this.token.set({
                     tint_color: "transparent",
                 })            
@@ -956,70 +956,8 @@ log(weaponArray)
         } 
 
 
-        if (team.type !== "Initiative Token" && team.type !== "Marker") {
-            //AddAbility("Info","!TokenInfo",team.charID);
-            //AddAbility("LOS","!CheckLOS;@{selected|token_id};@{target|token_id}",team.charID);
-            AddAbility("Activate Unit","!Activate",team.charID);
-        }
-
-        if (team.type === "Initiative Token") {
-            AddAbility("Restore Ammo to Unit","!RestoreAmmo;@{target|token_id};Intiative",team.charID);
-            AddAbility("Free Activation for Unit","!Activate;@{target|token_id};Initiative",team.charID);
-            return;
-        }
 
 
-        let actions = "!Actions;@{selected|token_id};";
-
-        if ((team.leader === true && team.rank > 1) || team.individual === "Forward Observer") {
-            AddAbility("Call Artillery",actions + "Call Artillery",team.charID);
-        }
-
-
-//amend for vehicles
-        if (team.move > 0) {
-            let a = "Move";
-            if (team.type.includes("Squad") || team.type === "Infantry Team" || team.rank > 0) {
-                a = "?{Move|Normal Move,Move|Charge into Close Combat,Charge}";
-            }
-            AddAbility("Move",actions + a,team.charID);
-        }
-
-        if (team.type.includes("Squad") || team.type === "Infantry Team" || team.rank > 0) {
-            AddAbility("0: Close Combat","!CloseCombat",team.charID);
-        }
-
-
-        for (let i=0;i<team.weaponArray.length;i++) {
-            let weapon = team.weaponArray[i];
-            let j = (i+1)
-            AddAbility((i+1) + ": " + weapon.name,actions + "Fire;" + i + ";@{target|token_id}",team.charID);
-        }
-
-        AddAbility("Rally",actions + "Rally",team.charID);
-
-
-        if (team.type === "Weapons Team" || team.type === "Vehicle" || team.type === "Soft Vehicle") {
-            AddAbility("Reload",actions + "Reload",team.charID);
-        }
-        if (team.recon === true || team.type === "Individual" || team.leader === true) {
-            AddAbility("Spot",actions + "Spot",team.charID);
-        }
-
-
-    }
-
-    const Reload = (team) => {
-        if (randomInteger(6) > 4) {
-            outputCard.body.push("Success!");
-            outputCard.body.push(team.name + " has reloaded/fixed the weapon jam");
-            team.token.set(SM.ammo,false);
-        } else {
-            outputCard.body.push("[#ff0000]Failure![/#]");
-            outputCard.body.push(team.name + " remains Out of Ammo or Jammed"); 
-        }
-        outputCard.body.push("Its Turn is Done");
-        team.SetStatus("Activated");
     }
 
 
@@ -1492,8 +1430,7 @@ log(weaponArray)
             sendChat("","Select a Token First");
             return;
         }
-        let id = Lookup(msg.selected[0]._id);
-        let team = Teams[id];
+        let team = Teams[msg.selected[0]._id];
         if (!team) {
             sendChat("","Not in Teams");
             return;
@@ -1518,22 +1455,13 @@ log(weaponArray)
             s = hex.terrainHeight === 1? " Storey":" Stories"
             outputCard.body.push("Terrain Height: " + hex.terrainHeight + s);
         }
-        let coverLevels = ["No","Soft","Hard"];
-        let cover;
-        if (isNaN(hex.cover)) {
-            outputCard.body.push("Terrain provides " + hex.cover);
-        } else {
-            cover = coverLevels[hex.cover];
-            outputCard.body.push("Terrain provides " + cover + " Cover");
+        let cover = (hex.cover === true) ? "":"No ";
+        outputCard.body.push("Terrain provides " + cover + "Cover");
+        let concealment = (hex.concealment === true) ? "":"No ";
+        if (hex.concealment === "Infantry") {
+            concealment = "Infantry ";
         }
-
-        if (hex.concealment !== false) {
-            let add = (hex.concealment === true) ? "":" for " + hex.concealment + " only";
-            outputCard.body.push("Terrain provides Concealment" + add);
-        }
-
-
-
+        outputCard.body.push("Terrain provides " + concealment + "Concealment");
 
         let edgeTerrainTypes = [];
         _.each(DIRECTIONS,a => {
@@ -1544,17 +1472,6 @@ log(weaponArray)
                 }
             }
         })
-        _.each(edgeTerrainTypes,edge => {
-                outputCard.body.push("[U]" + edge + "[/u]");
-                let edgeInfo = EdgeInfo[edge];
-                outputCard.body.push("If LOS Crosses, provides " + edgeInfo.cover);
-                if (edgeInfo.conceal !== false) {
-                    let add = (edgeInfo.conceal === true) ? "":" for " + edgeInfo.conceal + " only";
-                    outputCard.body.push("If LOS Crosses, provides Concealment" + add);
-                }
-        })
-
-
 
         PrintCard();
     }
@@ -1565,7 +1482,7 @@ log(weaponArray)
         let playerID = msg.playerid;
         let id,team,player;
         if (msg.selected) {
-            id = Lookup(msg.selected[0]._id);
+            id = msg.selected[0]._id;
         }
         let nation = "Neutral";
 
@@ -1596,20 +1513,10 @@ log(weaponArray)
         sendChat("player|" + playerID,res);
     }
 
-    const UnitNumbers = () => {
-        _.each(state.HoF.markers, marker => {
-            let el = Teams[marker.id];
-            let hex = HexMap[marker.startLoc];
-            el.token.set({
-                left: hex.centre.x,
-                top: hex.centre.y,
-            })
-            el.hexLabel = hex.label;
-        })
+
+    function getKeyByValue(object, value) {
+        return Object.keys(object).find(key => object[key] === value);
     }
-
-
-
 
 
     const ClearState = (msg) => {
@@ -1632,10 +1539,12 @@ log(weaponArray)
             nations: [],
             turn: 0,
             currentPlayer: 2,
+            firstPlayer: 2,
+            heroPoints: [0,0],
             losLines: [],
             platoonMarkers: [0,0], //# of platoons for each player
-            platoonIDs: {}, //ref by teamID - shows the platoonID
-            platoonInfo: {}, //ref by platoonID - shows the name, marker,all starting teamIDs
+            platoonIDs: {}, //ref by teamID - shows the platoonID of that TeamID
+            platoonInfo: {}, //ref by platoonID - shows the name, marker,all starting teamIDs of that platoonID
         }
         sendChat("","Cleared State/Arrays");
     }
@@ -1670,8 +1579,48 @@ log(weaponArray)
     }
 
     const NextTurn = () => {
-        
+        let turn = state.HoF.turn;
+        let currentPlayer = state.HoF.currentPlayer === 0 ? 1:0;
+        state.HoF.currentPlayer = currentPlayer;
+        if (currentPlayer === state.HoF.firstPlayer) {
+            turn++;
+            state.HoF.turn = turn;
+        }
+        let currentNation = state.HoF.nations[currentPlayer];
+        let heroPoints = state.HoF.heroPoints[currentPlayer];
+        if (turn === 1) {
+            heroPoints = Math.max(3,randomInteger(6));
+            state.HoF.heroPoints[currentPlayer] = heroPoints;
+        } else {
+
+
+
+
+        }
+        //send hero points as a whisper
+        let playerID = getKeyByValue(state.HoF.players,currentNation);
+        SetupCard("Hero Points","",currentNation);
+        outputCard.body.push("Current Hero Points: " + heroPoints);
+        PrintCard(playerID)
+
+        //send order points
+        SetupCard(currentNation + " Turn","Turn " + turn,currentNation);
+
+
+        PrintCard();
     }
+
+    const SetGame = (msg) => {
+        let Tag = msg.content.split(";");
+        let firstNation = Tag[1];
+        let firstPlayer = state.HoF.nations.indexOf(firstNation);
+        state.HoF.firstPlayer = firstPlayer;
+        state.HoF.currentPlayer = (firstPlayer === 0) ? 1:0; //as is reversed in nextturn routine
+log(state.HoF)
+    }
+
+
+
 
     const CheckLOS = (msg) => {
         let Tag = msg.content.split(";");
@@ -1893,67 +1842,17 @@ log(result)
         return true;
     }
 
+    const QueryHero = (msgs) => {
 
 
 
 
 
-    const AdjacentTokens = (refTeamID) => {
-        const visited = [];
-        const groups = [];
-        const keys = Object.keys(Teams);
-        const ignoreTokens = ["Marker","Initiative Token","Neutral Token"];
-
-        // 1. Helper to find neighbours
-        const getneighbours = (current) => {
-            let neighbours = [];
-            for (let i=0;i<keys.length;i++) {
-                let key = keys[i];
-                if (key === current) {continue};
-                if (ignoreTokens.includes(Teams[key].type)) {
-                    continue;
-                }
-                let d = Teams[key].Distance(Teams[current]);
-                if (d < 2) {
-                    neighbours.push(key);
-                } 
-            }
-            return neighbours;
-        };
-
-        // 2. Traverse the map to find connected clusters
-        for (const key of keys) {
-            if (visited.includes(key)) continue;
-            const group = [];
-            const queue = [key];
-            visited.push(key);
-
-            while (queue.length > 0) {
-                const current = queue.shift();
-                group.push(current);
-                for (const neighbour of getneighbours(current)) {
-                    if (visited.includes(neighbour) === false) {
-                        visited.push(neighbour);
-                        queue.push(neighbour);
-                    }
-                }
-            }
-
-            groups.push(group);
-
-        }
-
-        if (refTeamID) {
-            for (let i=0;i<groups.length;i++) {
-                let group = groups[i];
-                if (group.includes(refTeamID)) {
-                    return group;
-                }
-            }
-        } else {
-            return groups;
-        }
+        
     }
+
+
+
 
 
 
@@ -1981,7 +1880,7 @@ log(result)
             marker: platoonMarker,
             teamIDs: teamIDs,
         }
-        state.HoF.platoonInfo = platoonInfo;
+        state.HoF.platoonInfo[platoonID] = platoonInfo;
 
         let num = 0;
         _.each(platoon,team => {
@@ -1989,7 +1888,7 @@ log(result)
             if (team.notes.includes("Leader")) {
                 let surname = SurnameList[team.nation][randomInteger(SurnameList[team.nation].length) - 1];
                 let firstName = FirstNameList[team.nation][randomInteger(FirstNameList[team.nation].length) - 1];
-                name += " " + firstLetter + ". " + surname;
+                name += " " + firstName + " " + surname;
             } else {
                 num++;
                 name += " " + platoonLetter + "/" + num;
@@ -2014,6 +1913,23 @@ log(result)
         });
         sendChat("","Platoon Added")
     }
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2088,9 +2004,15 @@ log(result)
             case '!AddPlatoon':
                 AddPlatoon(msg);
                 break;
-
-
-
+            case '!NextTurn':
+                NextTurn();
+                break;
+            case '!SetGame':
+                SetGame(msg);
+                break;
+            case '!QueryHero':
+                QueryHero(msg);
+                break;
 
         }
     };
