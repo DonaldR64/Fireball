@@ -899,6 +899,12 @@ log(weaponArray)
         Check(modifier) {
             let target = 4 + modifier;
             let roll = randomInteger(6);
+            let rollDisplay = roll;
+            if ((this.quality === "Elite" && roll === 1) || (this.quality === "Poor" && roll === 6) ){
+                roll = randomInteger(6);
+                rollDisplay = roll + "[" + rollDisplay + "]";
+            }
+
             let success = false;
             if (roll >= target) {
                 success = true;
@@ -906,6 +912,7 @@ log(weaponArray)
             let result = {
                 target: target,
                 roll: roll,
+                rollDisplay: rollDisplay,
                 success: success,
             }
             return result;
@@ -1999,6 +2006,7 @@ log(result)
                 statusmarkers: "",
                 tint_color: "transparent",
                 disableSnapping: false,
+                disableTokenMenu: true,
             })
             team.name = name;
             team.platoonID = platoonID;
