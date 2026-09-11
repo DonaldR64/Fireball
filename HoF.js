@@ -731,10 +731,9 @@ const Main = (() => {
             this.label = offset.label();
             this.elevation = 0;
             this.terrainHeight = 0;
-            this.cover = 0;
-            this.interCover = 0;
+            this.cover = false;
             this.blockLOS = false;
-            this.concealment = false;
+            this.conceal = false;
             this.edges = {};
             this.terrainID = "";
             _.each(DIRECTIONS,a => {
@@ -1330,13 +1329,17 @@ log(weaponArray)
                             hex.terrain += ", " + name;
                         }
                         hex.terrainHeight = Math.max(terrain.height,hex.terrainHeight);
-                        hex.blockLOS = terrain.blockLOS;
-                        let ic = terrain.interCover || 0;
-                        hex.interCover = Math.max(ic, hex.interCover);
-                        hex.cover = Math.max(terrain.cover,hex.cover);
-                        hex.concealment = (terrain.conceal === true) ? true:hex.concealment;
-                        if (terrain.blockLOS === "Past") {
-                            hex.terrainID = token.id;
+                        if (terrain.blockLOS !== false) {
+                            hex.blockLOS = Math.max(hex.blockLOS,terrain.blockLOS);
+                        }
+                        if (terrain.cover === true) {
+                            hex.cover = true;
+                        }
+                        if (terrain.conceal === true) {
+                            hex.conceal = true;
+                        }
+                        if (terrain.conceal === "Infantry" && hex.cover === false) {    
+                            hex.conceal = "Infantry";
                         }
                     }
                 })
@@ -1490,8 +1493,8 @@ log(weaponArray)
         }
         let cover = (hex.cover === true) ? "":"No ";
         outputCard.body.push("Terrain provides " + cover + "Cover");
-        let concealment = (hex.concealment === true) ? "":"No ";
-        if (hex.concealment === "Infantry") {
+        let concealment = (hex.conceal === true) ? "":"No ";
+        if (hex.conceal === "Infantry") {
             concealment = "Infantry ";
         }
         outputCard.body.push("Terrain provides " + concealment + "Concealment");
@@ -1731,8 +1734,8 @@ log(state.HoF)
 
     const CheckLOS = (msg) => {
         let Tag = msg.content.split(";");
-        let shooter = Teams[Lookup(Tag[1])];
-        let target = Teams[Lookup(Tag[2])];
+        let shooter = Teams[Tag[1]];
+        let target = Teams[Tag[2]];
 
         if (!shooter) {
             sendChat("","Not valid shooter");
@@ -1754,9 +1757,13 @@ log(state.HoF)
         if (losResult.los === false) {
             outputCard.body.push("No LOS due to " + losResult.losReason + " at " + losResult.blockedHexLabel);
         } else {
-            coverLevel = [" No "," Soft "," Hard "," Bunker "];
-            let cover = Math.max(losResult.cover,losResult.interCover);
-            outputCard.body.push("Target has" + coverLevel[cover] + "Cover");
+            outputCard.body.push("Target is in LOS");
+            if (losResult.cover === true || losResult.interCover === true) {
+                outputCard.body.push("Target is in Cover");
+            }
+            if (losResult.conceal === true || losResult.interConceal === true) {
+                outputCard.body.push("Target is Concealed");
+            }
         }
 
 
@@ -1786,6 +1793,8 @@ log(state.HoF)
 
         let finalLOS = true;
         let interCoverFinal = 0;
+        let interConcealFinal = 0;
+
         let finalBlockedHexLabel;
         let finalLOSReason = "";
  
@@ -1793,25 +1802,16 @@ log(state.HoF)
         let labels = [interCubes[0].map((e)=> e.label()), interCubes[1].map((e)=> e.label())];
         let len = labels[0].length;
         let los = [true,true];
-        let interCover = [0,0];
+        let interCover = [false,false];
+        let interConceal = [false,false];
         let losReason = ["",""];
         let blockedHexLabels = ["",""]
 
 
         for (let side=0;side<2;side++) {
-            let lastTerrainID;
-            let lastTerrain = shooterHex.terrain;
-            let lastLabel = shooterHex.label;
+            let blocking = 0;
             for (let i=0;i<len;i++) {
                 let interHex = HexMap[labels[side][i]];
-
-                if (lastTerrainID && lastTerrainID !== interHex.terrainID) {
-                    los[side] = false;
-                    losReason[side] = lastTerrain;
-                    blockedHexLabels[side] = lastLabel;
-                    break;   
-                }
-
                 //Hills
                 if (interHex.hill === true) {
                     if (interHex.elevation > shooterHeight && interHex.elevation > targetHeight) {
@@ -1822,36 +1822,54 @@ log(state.HoF)
                     }
                 }
 
-                //Intervening Units
+                //Intervening Friendly Units at same elevation
                 if (interHex.tokenIDs.length > 0 && interHex.label !== targetHex.label) {
                     let team2 = Teams[interHex.tokenIDs[0]];
-                    if (shooter.type.includes("Vehicle") && team2.includes("Vehicle")) {
-                        los[side] = false;
-                        losReason[side] = team2.name;
-                        blockedHexLabels[side] = interHex.label;
-                        break;
-                    }
-                    if ((shooter.type.includes("Infantry") || shooter.type.includes("Weapon") || shooter.type === "Individual") && team2.type !== "Individual") {
-                        los[side] = false;
-                        losReason[side] = team2.name;
-                        blockedHexLabels[side] = interHex.label;
-                        break;
+                    if (team2.nation === shooter.nation && shooterHeight === interHex.elevation && team2.platoonID !== shooter.platoonID) {
+                        if (shooter.type.includes("Team")  && team2.type.includes( "Team")) {
+                            los[side] = false;
+                            losReason[side] = team2.name;
+                            blockedHexLabels[side] = interHex.label;
+                            break;
+                        }
+                        if (shooter.type.includes("Team") === false && team2.type.includes("Team") === false) {
+                            los[side] = false;
+                            losReason[side] = team2.name;
+                            blockedHexLabels[side] = interHex.label;
+                            break;
+                        }
                     }
                 }
 
                 //Blocking Terrain or Cover Terrain
-    
                 pt3 = new Point(i+1,0);
                 pt4 = new Point(i+1,(interHex.elevation + interHex.terrainHeight));
                 line1 = lineLine(pt1,pt2,pt3,pt4); //intersection
             
                 if (line1) {
-                    interCover[side] = Math.max(interCover[side],interHex.interCover);
-                    if (interHex.blockLOS === "Past"){
-                        if (interHex.terrainID !== shooterHex.terrainID) {
-                            lastTerrainID = interHex.terrainID;
+                    if (interHex.cover === true) {
+                        interCover[side] = true;
+                    }
+                    if (interHex.conceal === true) {
+                        interConceal[side] = true;
+                    }
+                    if (interHex.conceal === "Infantry" && interConceal[side] === false && target.type.includes("Team")) {
+                        interConceal[side] = true;
+                    }
+                    if (interHex.blockLOS === false && blocking > 0){
+                        los[side] = false;
+                        losReason[side] = "Other Side of " + interHex.terrain;
+                        blockedHexLabels[side] = interHex.label;
+                        break;
+                    } else {
+                        blocking++;
+                        if (blocking > interHex.block) {
+                            los[side] = false;
+                            losReason[side] = interHex.terrain;
+                            blockedHexLabels[side] = interHex.label;
+                            break;
                         }
-                    } 
+                    }
                 }
 
                 //edges
@@ -1860,31 +1878,22 @@ log(state.HoF)
                     let edge = HexMap[labels[side][i-1]].edges[dir];
                     if (edge !== "Open") {
                         let edgeInfo = EdgeInfo[edge];
-                        if (edgeInfo.blockLOS && i < (len-1)) {
+                        if (edgeInfo.blockLOS !== false && i < (len-edgeInfo.blockLOS)) {
                             los[side] = false;
                             losReason[side] = edge;
                             blockedHexLabels[side] = interHex.label;
                             break;
                         }
+                        if (edge.conceal === true) {
+                            interConceal[side] = true;
+                        }
                         if (i === len-1) {
-                            if (edgeInfo.cover.includes("Hard Cover for Infantry/Crewed Weapons") && target.type.includes("Vehicle") === false) {
-                                interCover[side] = 2;
-                            }
-                            if (edgeInfo.cover.includes("Soft Cover for Infantry") && target.type.includes("Vehicle") === false) {
-                                interCover[side] = 1;
-                            }
-                            if (edgeInfo.cover === 'Hard Cover for Teams against Wall') {
-                                interCover[side] = 2;
-                            }
-                            if (edgeInfo.cover.includes("Soft Cover for Vehicles") && target.type.includes("Vehicle")) {
-                                interCover[side] = 1;
+                            if (edge.cover === true) {
+                                interCover[side] = true;
                             }
                         }
                     }
                 }
-
-                lastTerrain = interHex.terrain;
-                lastLabel = interHex.label;
             }
         }
 
@@ -1909,22 +1918,25 @@ log(state.HoF)
         }
 
         if (los[0] === true && los[1] === true) {
-            interCoverFinal = Math.min(interCover[0],interCover[1]);
+            if (interCover[0] === true || interCover[1] === true) {
+                interCoverFinal = true;
+            }
+            if (interConceal[0] === true || interConceal[1] === true) {
+                interConcealFinal = true;
+            }
         } else if (los[0] === false) {
             interCoverFinal = interCover[1];
+            interConcealFinal = interConceal[1];
         } else if (los[1] === false) {
             interCoverFinal = interCover[0];
+            interConcealFinal = interConceal[0];
         }
 
         let cover = targetHex.cover;
-        if (isNaN(cover)) {
-            
-            if (cover === "Soft Cover for Stationary Infantry" && Infantry.includes(target.type) && target.token.get(SM.moved) === false) {
-                cover = 1;
-            } else {cover = 0}
+        let conceal = targetHex.conceal;
+        if (conceal === "Infantry" && target.type.includes("Team")) {
+            conceal = true;
         }
-
-
 
         let result = {
             los: finalLOS,
@@ -1932,7 +1944,9 @@ log(state.HoF)
             blockedHexLabel: finalBlockedHexLabel,
             distance: distance,
             interCover: interCoverFinal,
+            interConceal: interConcealFinal,
             cover: cover,
+            conceal: conceal,
             //shooterArcs: shooter.Arcs(target),
             //targetArcs: target.Arcs(shooter),
         }
@@ -2065,7 +2079,7 @@ log(result)
 
         //Teams activate in four steps: Declare Orders, Rally (if applicable), Resolve RFPs, then Execute Orders.
         //run through teams, rally, resolve rfps
-        
+
 
 
 
