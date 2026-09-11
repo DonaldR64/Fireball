@@ -104,6 +104,7 @@ const Main = (() => {
             "fontColour": "#000000",
             "borderColour": "#FF0000",
             "borderStyle": "5px ridge",
+            "flag": "status_Soviet::6433738",
             "platoonmarkers": ["letters_and_numbers0099::4815235","letters_and_numbers0100::4815236","letters_and_numbers0101::4815237","letters_and_numbers0102::4815238","letters_and_numbers0103::4815239","letters_and_numbers0104::4815240","letters_and_numbers0105::4815241","letters_and_numbers0106::4815242","letters_and_numbers0107::4815243","letters_and_numbers0108::4815244"],       
         },
         "Germany": {
@@ -115,11 +116,8 @@ const Main = (() => {
             "fontColour": "#FFFFFF",
             "borderColour": "#000000",
             "borderStyle": "5px double",
+            "flag":"status_Iron-Cross::7650254",
             "platoonmarkers": ["letters_and_numbers0197::4815333","letters_and_numbers0198::4815334","letters_and_numbers0199::4815335","letters_and_numbers0200::4815336","letters_and_numbers0201::4815337","letters_and_numbers0202::4815338","letters_and_numbers0203::4815339","letters_and_numbers0204::4815340","letters_and_numbers0205::4815341","letters_and_numbers0206::4815342"],   
-            "Company Leader": "Hauptman ",
-            "Platoon Leader": "Lt. ",
-            "Forward Observer": "Lt. ",
-            "Sniper": "Pvt. "
         },
         "UK": {
             "short": "UK",
@@ -130,6 +128,8 @@ const Main = (() => {
             "fontColour": "#FFFFFF",
             "borderColour": "#BC2D2F",
             "borderStyle": "5px groove",
+//needs flag
+            "flag": "",
             "platoonmarkers": ["letters_and_numbers0148::4815284","letters_and_numbers0149::4815285","letters_and_numbers0150::4815286","letters_and_numbers0151::4815287","letters_and_numbers0152::4815288","letters_and_numbers0153::4815289","letters_and_numbers0154::4815290","letters_and_numbers0155::4815291","letters_and_numbers0156::4815292","letters_and_numbers0157::4815293"],
         },
         "USA": {
@@ -141,12 +141,8 @@ const Main = (() => {
             "fontColour": "#006400",
             "borderColour": "#006400",
             "borderStyle": "5px double",
+            "flag": "status_USA::6490818",
             "platoonmarkers": ["letters_and_numbers0050::4815186","letters_and_numbers0051::4815187","letters_and_numbers0052::4815188","letters_and_numbers0053::4815189","letters_and_numbers0054::4815190","letters_and_numbers0055::4815191","letters_and_numbers0056::4815192","letters_and_numbers0057::4815193","letters_and_numbers0058::4815194","letters_and_numbers0059::4815195"],
-            "Company Leader": "Captain ",
-            "Platoon Leader": "Lt. ",
-            "Forward Observer": "Lt. ",
-            "Sniper": "Pvt. "
-
         },
 
 
@@ -194,7 +190,6 @@ const Main = (() => {
 
     const SM = {
         RFP: "status_red",
-
     }
 
 
@@ -980,11 +975,11 @@ log(weaponArray)
         if (team.type !== "System Token") {
             let abilityName = "Activate ";
             if (team.notes.includes("Leader") || platoonInfo.vehiclePlatoon) {
-                abilityName += "Platoon";
+                extra = "Platoon";
             } else {
-                abilityName += "Team";
+                extra = "Team";
             }
-            AddAbility(abilityName,"!Activate",team.charID);
+            AddAbility(abilityName + extra,"!Activate;" + extra + ";?{Use Hero Point?|No|Yes}",team.charID);
         }
 
 
@@ -1695,7 +1690,7 @@ log(weaponArray)
         let orderPointArray = OrderPoints(currentNation);
         let orderPoints = orderPointArray.orderPoints;
         let heroDie = false;
-        if (orderPointArray.heroPoints) {
+        if (orderPointArray.heroPoints && turn > 1) {
             heroPoints = orderPointArray.heroPoints;
             heroDie = true;
         }
@@ -1718,6 +1713,20 @@ log(weaponArray)
         outputCard.body.push("Order Points: " + tip);
         state.HoF.orderPoints[currentPlayer] = orderPoints;
         PrintCard();
+
+        //clear hero markers on all units as new turn
+        //if current player, set status to unactivated
+        _.each(Teams,team => {
+            team.token.set(Nations[team.nation].flag, false);
+            if (team.player === currentPlayer) {
+                team.SetAct("Unactivated");
+            } else {
+                team.SetAct("Activated");
+            }
+        })
+
+
+
     }
 
     const SetGame = (msg) => {
@@ -2003,6 +2012,7 @@ log(result)
                 vehiclePlatoon = false;
             }
         }
+        teamIDs = [... new Set(teamIDs)];
 
         let platoonMarkerNum = state.HoF.platoonMarkers[platoon[0].player];
         state.HoF.platoonMarkers[platoon[0].player] = platoonMarkerNum + 1;
@@ -2058,10 +2068,42 @@ log(result)
         if (msg.selected) {
             id = msg.selected[0]._id;
         }
+        let Tag = msg.content.split(";");
+        let playerID = msg.playerid;
+        let groupAct = Tag[1];
+        let heroPointUsed = Tag[2] === "Yes" ? true:false;
         let team = Teams[id];
+        let availableHP = state.HoF.heroPoints[team.player];
+        let availableOP = state.HoF.orderPoints[team.player];
+        SetupCard(team.name,"Activate",team.nation);
+        let errorMsgs = [];
+
+        if (team.player !== state.HoF.currentPlayer && heroPointUsed === false) {
+            errorMsgs.push("Activating during other Player's turn requires a Hero Point to be used");
+        }
+        if (team.Act() !== "Unactivated" && heroPointUsed === false && team.player === state.HoF.currentPlayer) {
+            errorMsgs.push(groupAct + " has already Activated and a Hero Point must be Used");
+        }
+        if (heroPointUsed && availableHP === 0) {
+            errorMsgs.push("No Hero Points Available");
+        }
+        if (team.Act() !== "Activated" && availableOP === 0 && heroPointUsed === false) {
+            errorMsgs.push("No Order Points Remain, a Hero Point must be used");
+        }
+        if (heroPointUsed && team.token.get(Nations[team.nation].flag)) {
+            errorMsgs.push("This " + groupAct + " has already used a Hero Point this turn");
+        }
+
+
+
+        if (ErrorMsg(errorMsgs)) {
+            PrintCard();
+            return;
+        }
+
         let teams = [team];
-        let platoonsInfo = state.HoF.platoonInfo;
-        if ((team.notes.includes("Leader")) || (platoonInfo.vehiclePlatoon === true && team.Status() === "Ready")) {
+        let platoonInfo = state.HoF.platoonInfo[team.platoonID];
+        if (groupAct === "Platoon") {
             //activate entire platoon in LOS from team
             let ids = platoonInfo.teamIDs;
             _.each(ids,id2 => {
@@ -2070,7 +2112,7 @@ log(result)
                     if (team2) {
                         let los = LOS(team,team2);
                         if (los.los === true) {
-                            teams.push()
+                            teams.push(team2)
                         }
                     }
                 }
@@ -2078,13 +2120,36 @@ log(result)
         }
 
         //Teams activate in four steps: Declare Orders, Rally (if applicable), Resolve RFPs, then Execute Orders.
-        //run through teams, rally, resolve rfps
+        //do the RFPs etc when select Move/Fire on each team individually
+        //make all team(s) green aura to signify which can be given orders
+        _.each(teams,team => {
+            team.SetAct("Active");
+            if (heroPointUsed) {
+                team.token.set(Nations[team.nation].flag,true);
+            }
+        })
+        if (groupAct === "Team") {
+            outputCard.body.push("The Team is Activated and can be given an Order");
+        } else {
+            outputCard.body.push("Any Teams in LOS are Activated and can be given an Order");
+        }
+        if (heroPointUsed === false) {
+            availableOP--;
+            state.HoF.orderPoints[team.player] = availableOP;
+            outputCard.body.push("[hr]");
+            outputCard.body.push("Remaining Order Points: " + availableOP);
+        }
+        PrintCard();
+
+        if (heroPointUsed) {
+            availableHP--;
+            state.HoF.heroPoints[team.player] = availableHP;
+            SetupCard("Hero Points","",team.nation);
+            outputCard.body.push("Remaining: " + availableHP);
+            PrintCard(playerID);
+        }
 
 
-
-
-
-        
     }
 
 
