@@ -980,7 +980,25 @@ log(weaponArray)
                 extra = "Team";
             }
             AddAbility(abilityName + extra,"!Activate;" + extra + ";?{Use Hero Point?|No|Yes}",team.charID);
+
+
+            AddAbility("Move","!Order;Move;@{selected|token_id}",team.charID);
+
+            if (team.notes.includes("Leader")) {
+                //leader abilities here
+            } else {
+                AddAbility("Fire","!Order;Fire;@{selected|token_id};@{target|token_id}",team.charID);
+            }
+
+
+
+
+
+
         }
+
+
+
 
 
 
@@ -1736,6 +1754,13 @@ log(weaponArray)
         state.HoF.firstPlayer = firstPlayer;
         state.HoF.currentPlayer = (firstPlayer === 0) ? 1:0; //as is reversed in nextturn routine
 log(state.HoF)
+
+
+        SetupCard("Setup","","Neutral");
+        outputCard.body.push("First Player is " + firstNation);
+        outputCard.body.push("Each Player should select one of their tokens and click Roll to link their PlayerID");
+        PrintCard();
+
     }
 
 
@@ -2048,6 +2073,7 @@ log(result)
                 aura2_color: "transparent",
                 showplayers_aura1: true,
                 showplayers_name: true,
+                bar3_value: "0/0",
                 statusmarkers: "",
                 tint_color: "transparent",
                 disableSnapping: false,
@@ -2152,6 +2178,31 @@ log(result)
 
     }
 
+    const Order = (msg) => {
+        let Tag = msg.content.split(";");
+        let order = Tag[1];
+        let team = Tag[2];
+        let target = Tag[3] || ""; //if fire, otherwise blank
+
+        //Order Declared, now do rally and resolve RFP
+        let status = team.Status();
+        let rfp = [0,0];
+        if (team.token.get(SM.RFP)) {
+            base = team.token.get("bar3_value").split("/")
+            
+        }
+        if (status === "Suppressed")
+
+
+
+
+
+
+
+    }
+
+
+
 
 
 
@@ -2251,7 +2302,9 @@ log(result)
             case '!Activate':
                 Activate(msg);
                 break;
-
+            case '!Order':
+                Order(msg);
+                break;
 
         }
     };
