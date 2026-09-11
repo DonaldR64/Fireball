@@ -2117,17 +2117,20 @@ log(result)
         if (team.player !== state.HoF.currentPlayer && heroPointUsed === false) {
             errorMsgs.push("Activating during other Player's turn requires a Hero Point to be used");
         }
-        if (team.Act() !== "Unactivated" && heroPointUsed === false && team.player === state.HoF.currentPlayer) {
-            errorMsgs.push(groupAct + " has already Activated and a Hero Point must be Used");
+        if (team.Act() === "Activated" && heroPointUsed === false && team.player === state.HoF.currentPlayer) {
+            errorMsgs.push(groupAct + " has already Activated; a Hero Point must be Used");
         }
         if (heroPointUsed && availableHP === 0) {
             errorMsgs.push("No Hero Points Available");
         }
-        if (team.Act() !== "Activated" && availableOP === 0 && heroPointUsed === false) {
+        if (team.Act() === "Unactivated" && availableOP === 0 && heroPointUsed === false) {
             errorMsgs.push("No Order Points Remain, a Hero Point must be used");
         }
         if (heroPointUsed && team.token.get(Nations[team.nation].flag)) {
             errorMsgs.push("This " + groupAct + " has already used a Hero Point this turn");
+        }
+        if (team.Act() === "Active") {
+            errorMsgs.push("This Team is already Activated");
         }
 
 
