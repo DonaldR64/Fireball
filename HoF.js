@@ -2376,6 +2376,10 @@ log(result)
             subtitle = "Rolls: " + PlatoonMoves.infMove.toString();
             subtitle += "<br>No LOS = 12 Hexes";
             subtitle = '[Movement](#" class="showtip" title="' + subtitle + ')';   
+            if (team.notes.includes("Leader")) {
+                move = 12;
+                subtitle = "Leader: 12 Hexes";
+            }
             outputCard.body.push("Movement: [#ff0000]" + move + "+[/#] Hexes");
             outputCard.body.push("The Team is Unaffected by Difficult or Very Difficult Ground");
         } else if (team.type.includes("Gun")) {
