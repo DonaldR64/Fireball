@@ -2040,6 +2040,36 @@ log(result)
 
  
     const Activate = (msg) => {
+        let id;
+        if (msg.selected) {
+            id = msg.selected[0]._id;
+        }
+        let team = Teams[id];
+        let teams = [team];
+        let platoonsInfo = state.HoF.platoonInfo;
+        if ((team.notes.includes("Leader")) || (platoonInfo.vehiclePlatoon === true && team.Status() === "Ready")) {
+            //activate entire platoon in LOS from team
+            let ids = platoonInfo.teamIDs;
+            _.each(ids,id2 => {
+                if(id2 !== id) {
+                    let team2 = Teams[id2];
+                    if (team2) {
+                        let los = LOS(team,team2);
+                        if (los.los === true) {
+                            teams.push()
+                        }
+                    }
+                }
+            })
+        }
+
+        //Teams activate in four steps: Declare Orders, Rally (if applicable), Resolve RFPs, then Execute Orders.
+        //run through teams, rally, resolve rfps
+        
+
+
+
+
         
     }
 
