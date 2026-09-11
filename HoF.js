@@ -8,6 +8,7 @@ const Main = (() => {
     let HexSize, HexInfo, DIRECTIONS;
     let MapInfo = {};
     let Teams = {};
+    let PlatoonMoves = {};
 
     let SurnameList = {
         Germany: ["Schmidt","Schneider","Fischer","Weber","Meyer","Wagner","Becker","Schulz","Hoffmann","Bauer","Richter","Klein","Wolf","Schroder","Neumann","Schwarz","Braun","Hofmann","Werner","Krause","Konig","Lang","Vogel","Frank","Beck"],
@@ -841,7 +842,7 @@ log(weaponArray)
         Status() {
             let status = "Ready";
             let tint = this.token.get("tint_color");
-            if (tint === "#ffff00") {
+            if (tint === "#ff0000") {
                 status = "Suppressed";
             }
             return status;
@@ -867,7 +868,7 @@ log(weaponArray)
                 })            
             } else if (newStatus === "Suppressed") {
                 this.token.set({
-                    tint_color: "#ffff00",
+                    tint_color: "#ff0000",
                 })  
             } else if (newStatus === "Killed") {
                 this.token.set("status_dead",true);
@@ -2086,7 +2087,7 @@ log(result)
                 statusmarkers: "",
                 tint_color: "transparent",
                 disableSnapping: false,
-                disableTokenMenu: true,
+                disableTokenMenu: false,
             })
             team.name = name;
             team.platoonID = platoonID;
@@ -2135,6 +2136,11 @@ log(result)
             PrintCard();
             return;
         }
+        _.each(Teams,team => {
+            if (team.Act() === "Active") {
+                team.SetAct("Activated");
+            }
+        })
 
         let teams = [team];
         let platoonInfo = state.HoF.platoonInfo[team.platoonID];
@@ -2184,24 +2190,39 @@ log(result)
             PrintCard(playerID);
         }
 
+        //roll movement rates for whole unit and save to 'pull out' if any in unit move
+        PlatoonMoves = {
+            infMove: [randomInteger(6),randomInteger(6)].sort(),
+            gunMove: [randomInteger(6)],
+            vehMove: [randomInteger(6),randomInteger(6),randomInteger(6)].sort(),
+        }
+
+
 
     }
 
     const Order = (msg) => {
         let Tag = msg.content.split(";");
         let order = Tag[1];
-        let team = Tag[2];
+        let team = Teams[Tag[2]];
         let target = Tag[3] || ""; //if fire, otherwise blank
 
         SetupCard(team.name,order,team.nation);
+        if (team.Act() !== "Active") {
+            outputCard.body.push("Team not Activated");
+            PrintCard();
+            return;
+        }
+
+
         //Order Declared, now do rally and resolve RFP
-        let startstatus = team.Status();
+        let startStatus = team.Status();
         let rfp = [0,0]; //non cover and cover RFP
         if (team.token.get(SM.RFP)) {
             rfp = team.token.get("bar3_value").split("/").map(e => parseInt(e));
         }
         let totalRFP = rfp[0] + rfp[1];
-        if (startstatus === "Suppressed") {
+        if (startStatus === "Suppressed") {
             //check LOS to enemy, if none to non-small teams, then auto, otherwise can rally check if no RFP
             let enemyInSight = false;
             let rally = false;
@@ -2235,10 +2256,10 @@ log(result)
             }
             outputCard.body.push("[hr]");
         }
+        let finalState = startStatus === "Ready" ? 0:1;
 
         if (totalRFP > 0) {
             outputCard.body.push("Enemy Fire Resolution");
-            let finalState = team.Status() === "Ready" ? 0:1;
             let states = ["Ready","Suppressed","Killed"];
             let noun = "Cover";
             let qualityReroll = false;
@@ -2266,7 +2287,7 @@ log(result)
                         rolls[rolls.length - 1] = roll + "r";
                         qualityReroll = true;
                     }
-                    if (startstatus === "Suppressed") {
+                    if (startStatus === "Suppressed") {
                         if (roll < 2) {finalState = 2};
                         if (roll === 2 || roll === 3) {finalState = 1};
                         tip = "<br>Suppressed<br>Killed on 1<br>Suppressed on 2 or 3";
@@ -2297,7 +2318,7 @@ log(result)
                         rolls[rolls.length - 1] = roll + "r";
                         qualityReroll = true;
                     }
-                    if (startstatus === "Suppressed" && team.type !== "Vehicle" && roll === 1 && reroll === false) {
+                    if (startStatus === "Suppressed" && team.type !== "Vehicle" && roll === 1 && reroll === false) {
                         roll = randomInteger(6);
                         rolls[roll.length - 1] = roll + "r";
                         reroll = true;
@@ -2314,39 +2335,108 @@ log(result)
             }
             if (finalState === 1) {
                 team.SetStatus("Suppressed");
-                if (order === "Fire") {
-                    outputCard.body.push("Suppressed Teams cannot Fire");
-                } else {
-                    outputCard.body.push("Cannot Move towards Visible Enemy");
-                    outputcard.body.push("[hr]")
-                }
             } else if (finalState === 2) {
                 team.SetStatus("Killed");
             }
+            team.token.set("bar3_value","0/0");
         }
-        PrintCard();
+
+
+
+        
         team.SetAct("Activated");
-        if (order === "Move" && finalState !== 2) {
-            Move(team);
-        } else if (order === "Fire" && finalState === 0) {
-            Fire(team,target);
+        if (finalState === 2) {
+            PrintCard();
+        } else {
+            if (order === "Move") {
+                if (totalRFP > 0) {PrintCard()};
+                Move(team);
+            } else if (order === "Fire") {
+                if (finalState === 1) {
+                    outputCard.body.push("Suppressed Units Cannot Fire");
+                    PrintCard();
+                } else {
+                    if (totalRFP > 0) {PrintCard()};
+                    Fire(team,target);
+                }
+            }
         }
     }
 
 
 
     const Move = (team) => {
+        SetupCard(team.name,"",team.nation);
+        let subtitle;
+        if (team.type.includes("Team")) {
+            let move = 0;
+            _.each(PlatoonMoves.infMove,roll => {
+                move += roll;
+            })
+            subtitle = "Rolls: " + PlatoonMoves.infMove.toString();
+            subtitle += "<br>No LOS = 12 Hexes";
+            subtitle = '[Movement](#" class="showtip" title="' + subtitle + ')';   
+            outputCard.body.push("Movement: [#ff0000]" + move + "+[/#] Hexes");
+            outputCard.body.push("The Team is Unaffected by Difficult or Very Difficult Ground");
+        } else if (team.type.includes("Gun")) {
+            let move = PlatoonMoves.gunMove[0];
+            let s = move === 1 ? "":"es"
+            subtitle = "Roll: " + move;
+            subtitle += "<br>No LOS = 6 Hexes";
+
+            subtitle = '[Movement](#" class="showtip" title="' + subtitle + ')';   
+            outputCard.body.push("Movement: [#ff0000]" + move + "+[/#] Hex" + s);
+            outputCard.body.push("The Team is  Unaffected by Difficult Ground");
+            outputCard.body.push("The Team is unable to enter Very Difficult Ground");
+            outputCard.body.push("The Team may not move adjacent to enemy Teams");
+        } else if (team.type.includes("Vehicle")) {
+            let maxMove = 0;
+            for (let i=0;i<3;i++) {
+                maxMove += PlatoonMoves.vehMove[i];
+            }
+            let s = maxMove === 1 ? "":"es"
+            let diffMove = maxMove - PlatoonMoves.vehMove[2]; //drop highest;
+            let s2 = diffMove === 1 ? "":"es"
+            subtitle = "Rolls: " + PlatoonMoves.vehMove.toString();
+            subtitle += "<br>No LOS = 18 or 12 Hexes";
+            subtitle = '[Movement](#" class="showtip" title="' + subtitle + ')';   
+
+            if (team.notes.includes("Tracked") || team.notes.includes("Half-Tracked")) {
+                outputCard.body.push("Movement: [#ff0000]" + maxMove + "+[/#] Hex" + s);
+                if (team.notes.includes("Tracked")) {
+                    outputCard.body.push("Difficult or Very Difficult Ground: [#ff0000]" + diffMove + "+[/#] Hex" + s2);
+                    outputCard.body.push("Very Difficult Ground Requires a Terrain Check");
+                } else if (team.notes.includes("Half-Tracked")) {
+                    outputCard.body.push("Difficult Ground: [#ff0000]" + diffMove + "+[/#] Hex" + s2);
+                    outputCard.body.push("Very Difficult Ground may not be entered");
+                }
+                outputCard.body.push("Movement entirely on a Road adds 6 Hexes");
+            }
+            if (team.notes.includes("Wheeled")) {
+                outputCard.body.push("Movement: [#ff0000]" + maxMove + "+[/#] Hex" + s);
+                outputCard.body.push("Difficult Ground: [#ff0000]" + diffMove + "+[/#] Hex" + s2);
+                outputCard.body.push("Difficult Ground also requires a Terrain Check");
+                outputCard.body.push("Very Difficult Ground may not be entered");
+                outputCard.body.push("Movement entirely on a Road adds 12 Hexes");
+            }
+            outputCard.body.push("Unless following a road, Movement more than 6 Hexes allows only one pivot at the start of the Move");
 
 
 
+
+        }
+
+        outputCard.subtitle = subtitle;
+
+
+        PrintCard();
     }
 
     const Fire = (team,target) => {
+        SetupCard(team.name,"Fire",team.nation);
 
 
-
-
-
+        PrintCard();
     }
 
 
