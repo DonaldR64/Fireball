@@ -192,6 +192,8 @@ const Main = (() => {
 
     const SM = {
         RFP: "status_red",
+        directed: "",
+        moveup: "",
     }
 
 
@@ -787,6 +789,7 @@ const Main = (() => {
             this.type = aa.type;
             this.quality = aa.quality;
             this.notes = aa.notes || " ";
+            this.command = false;
 
             let weaponArray = [];
             for (let w=1;w<3;w++) {
@@ -985,7 +988,7 @@ log(weaponArray)
         } 
         let platoonInfo = state.HoF.platoonInfo[team.platoonID];
         if (team.type !== "System Token") {
-            let abilityName = "Activate ";
+            let abilityName = "0: Activate ";
             if (team.notes.includes("Leader") || platoonInfo.vehiclePlatoon) {
                 extra = "Platoon";
             } else {
@@ -997,7 +1000,14 @@ log(weaponArray)
             AddAbility("Move","!Order;Move;@{selected|token_id}",team.charID);
 
             if (team.notes.includes("Leader")) {
-                //leader abilities here
+                AddAbility("1: Rally Team","!Command;Rally;@{selected|token_id};@{target|token_id}",team.charID);
+                AddAbility("2: Direct Fire","!Command;Direct Fire;@{selected|token_id};@{target|token_id}",team.charID);
+                AddAbility("3: Move Up","!Command;Move Up;@{selected|token_id};@{target|token_id}",team.charID);
+
+
+
+
+
             } else {
                 AddAbility("Fire","!Order;Fire;@{selected|token_id};@{target|token_id}",team.charID);
             }
@@ -1016,6 +1026,61 @@ log(weaponArray)
 
 
     }
+
+    const Command = (msg) => {
+        let Tag = msg.content.split(";");
+        let ability = Tag[1];
+        let leader = Teams[Tag[2]];
+        let target = Teams[Tag[3]];
+
+        let losResult = LOS(leader,target);
+        SetupCard(leader.name,ability,leader.nation);
+
+        errorMsgs = [];
+
+        if (leader.Status() === "Suppressed") {
+            errorMsgs.push("Leader is Suppressed");
+        }
+        if ((ability === "Rally Team" || ability === "Direct Fire") && losResult.distance > 1) {
+            errorMsgs.push(ability + " Target must be adjacent");
+        }
+        if (ability === "Rally Team" && target.Status !== "Suppressed") {
+            errorMsgs.push("Target is not Suppressed");
+        }
+        if (ability === "Move Up" && losResult.los === false) {
+            errorMsgs.push("Move Up Target must be in LOS");
+        }
+        if (leader.command === true) {
+            errorMsgs.push("Leader has already issued a Command this Activation");
+        }
+
+        if (ErrorMsg(errorMsgs)) {
+            PrintCard();
+            return;
+        }
+
+        if (ability === "Direct Fire") {
+            target.token.set(SM.directed,true);
+            outputCard.body.push(target.name + " will add +1 to its ROF");
+        } else if (ability === "Move Up") {
+            target.token.set(SM.moveup,true);
+            outputCard.body.push(target.name + " can move an additional 3 Hexes to move up to the Leader");
+        } else if (ability === "Rally") {
+            let rallyCheck = target.Check(0);
+            outputCard.body.push("Rally Check " + rallyCheck.tip);
+            if (rallyCheck.result === true) {
+                team.SetStatus("Ready");
+            } 
+            outputCard.body.push("If the target Team moves, the Leader can move with it");
+        }
+
+
+
+
+    }
+
+
+
 
 
 
@@ -1778,6 +1843,7 @@ log(weaponArray)
         //if current player, set status to unactivated
         _.each(Teams,team => {
             team.token.set(Nations[team.nation].flag, false);
+            team.command = false;
             if (team.player === currentPlayer) {
                 team.SetAct("Unactivated");
             } else {
@@ -2200,6 +2266,10 @@ log(result)
         //make all team(s) green aura to signify which can be given orders
         _.each(teams,team => {
             team.SetAct("Active");
+            team.command = false;
+            team.token.set(SM.directed, false);
+            team.token.set(SM.moveup,false);
+
             if (heroPointUsed) {
                 team.token.set(Nations[team.nation].flag,true);
             }
@@ -2485,6 +2555,11 @@ log(result)
 
         outputCard.subtitle = subtitle;
 
+        if (team.token.get(SM.moveup)) {
+            outputCard.body.push("[hr]");
+            outputCard.body.push("The Team may Move Up an additional 3 Hexes")
+            team.token.set(SM.moveup,false);
+        }
 
         PrintCard();
     }
@@ -2592,6 +2667,9 @@ log(result)
                 break;
             case '!Order':
                 Order(msg);
+                break;
+            case '!Command':
+                Command(msg);
                 break;
 
         }
