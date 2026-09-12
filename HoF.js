@@ -2478,18 +2478,12 @@ log(team.notes)
         }
 
         //check if missing a PL
-log("Leader")
-log(state.HoF.platoonInfo[team.platoonID].leader)
-log("Vehicle Platoon")
-log(state.HoF.platoonInfo[team.platoonID].vehiclePlatoon)
+
         if (state.HoF.platoonInfo[team.platoonID].vehiclePlatoon === false && state.HoF.platoonInfo[team.platoonID].leader === false && status !== "Killed") {
             let trainingCheck = team.Check(0);
-log(trainingCheck)
             if (trainingCheck.result === true) {
                 //place a leader token on spot, name it etc
                 let cID = Nations[team.nation]["PL Character ID"]
-                
-    //make sure is a Team in array and set platoon ID
                 let token = summonToken(cID,HexMap[team.hexLabel].centre,{w: 70,h: 70},0,"objects");
                 if (token) {
                     outputCard.body.push("[hr]");
