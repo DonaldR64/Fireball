@@ -2486,14 +2486,13 @@ log(state.HoF.platoonInfo[team.platoonID].vehiclePlatoon)
             let trainingCheck = team.Check(0);
 log(trainingCheck)
             if (trainingCheck.result === true) {
-                outputCard.body.push("[hr]");
-                outputCard.body.push("One of the Platoon Sergeants has assumed Leadership of the Platoon");
                 //place a leader token on spot, name it etc
                 let cID = Nations[team.nation]["PL Character ID"]
                 
     //make sure is a Team in array and set platoon ID
                 let token = summonToken(cID,HexMap[team.hexLabel].centre,{w: 70,h: 70},0,"objects");
                 if (token) {
+                    outputCard.body.push("[hr]");
                     let leader = new Team(token.id);
                     leader.Name("Sgt");
                     outputCard.body.push(leader.name + " has assumed Leadership of the Platoon");
