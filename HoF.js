@@ -106,6 +106,10 @@ const Main = (() => {
             "borderColour": "#FF0000",
             "borderStyle": "5px ridge",
             "flag": "status_Soviet::6433738",
+            "PL Character ID": "",
+            "Sgt": "Serzhánt",
+            "Lt": "Leytenant",
+            "Cpt": "Kapitán",
             "platoonmarkers": ["letters_and_numbers0099::4815235","letters_and_numbers0100::4815236","letters_and_numbers0101::4815237","letters_and_numbers0102::4815238","letters_and_numbers0103::4815239","letters_and_numbers0104::4815240","letters_and_numbers0105::4815241","letters_and_numbers0106::4815242","letters_and_numbers0107::4815243","letters_and_numbers0108::4815244"],       
         },
         "Germany": {
@@ -118,6 +122,10 @@ const Main = (() => {
             "borderColour": "#000000",
             "borderStyle": "5px double",
             "flag":"status_Iron-Cross::7650254",
+            "PL Character ID": "",
+            "Sgt": "Feldwebel",
+            "Lt": "Leutnant",
+            "Cpt": "Hauptmann",
             "platoonmarkers": ["letters_and_numbers0197::4815333","letters_and_numbers0198::4815334","letters_and_numbers0199::4815335","letters_and_numbers0200::4815336","letters_and_numbers0201::4815337","letters_and_numbers0202::4815338","letters_and_numbers0203::4815339","letters_and_numbers0204::4815340","letters_and_numbers0205::4815341","letters_and_numbers0206::4815342"],   
         },
         "UK": {
@@ -131,6 +139,10 @@ const Main = (() => {
             "borderStyle": "5px groove",
 //needs flag
             "flag": "",
+            "PL Character ID": "",
+            "Sgt": "Sergeant",
+            "Lt": "Lieutenant",
+            "Cpt": "Captain",
             "platoonmarkers": ["letters_and_numbers0148::4815284","letters_and_numbers0149::4815285","letters_and_numbers0150::4815286","letters_and_numbers0151::4815287","letters_and_numbers0152::4815288","letters_and_numbers0153::4815289","letters_and_numbers0154::4815290","letters_and_numbers0155::4815291","letters_and_numbers0156::4815292","letters_and_numbers0157::4815293"],
         },
         "USA": {
@@ -143,6 +155,10 @@ const Main = (() => {
             "borderColour": "#006400",
             "borderStyle": "5px double",
             "flag": "status_USA::6490818",
+            "PL Character ID": "",
+            "Sgt": "Sergeant",
+            "Lt": "Lieutenant",
+            "Cpt": "Captain",
             "platoonmarkers": ["letters_and_numbers0050::4815186","letters_and_numbers0051::4815187","letters_and_numbers0052::4815188","letters_and_numbers0053::4815189","letters_and_numbers0054::4815190","letters_and_numbers0055::4815191","letters_and_numbers0056::4815192","letters_and_numbers0057::4815193","letters_and_numbers0058::4815194","letters_and_numbers0059::4815195"],
         },
 
@@ -1054,6 +1070,16 @@ log(weaponArray)
             this.token.set("bar3_value","0/0");
             return finalStatus;
         }
+
+        Name(rank) {
+            let surname = SurnameList[this.nation][randomInteger(SurnameList[this.nation].length) - 1];
+            let firstName = FirstNameList[this.nation][randomInteger(FirstNameList[this].length) - 1];
+            let rank = Nations[this.nation][rank];
+            let name = rank + " " + firstName + " " + surname;
+            this.name = name;
+            this.token.set("name",name);
+        }
+
 
 
 
@@ -2315,14 +2341,17 @@ log(result)
         let num = 0;
         _.each(platoon,team => {
             let name = team.charName.split(",")[0].trim();
-            if (team.notes.includes("Leader") || team.notes.includes("Company Commander")) {
-                let surname = SurnameList[team.nation][randomInteger(SurnameList[team.nation].length) - 1];
-                let firstName = FirstNameList[team.nation][randomInteger(FirstNameList[team.nation].length) - 1];
-                name += " " + firstName + " " + surname;
+            if (team.notes.includes("Leader")) {
+                team.Name("Lt");
+            }
+            if (team.notes.includes("Company Commander")) {
+                team.Name("Cpt");
             } else {
                 num++;
                 name += " " + platoonLetter + "/" + num;
             }
+
+
 
             team.token.set({
                 name: name,
@@ -2437,9 +2466,18 @@ log(result)
                 outputCard.body.push("[hr]");
                 outputCard.body.push("One of the Platoon Sergeants has assumed Leadership of the Platoon");
                 //place a leader token on spot, name it etc
-                //the team is now this PL
+                let cID = Nations[team.nation]["PL Character ID"]
+                
+    //make sure is a Team in array and set platoon ID
+                let team = summonToken(cID,HexMap[team.hexLabel].centre,{w: 70,h: 70},0,"objects");
+                team.Name("Sgt");
+                outputCard.body.push(team.name + " has assumed Leadership of the Platoon");
                 outputCard.body.push("He immediately activates this Team and any others in LOS");
                 groupAct = "Platoon";
+                state.HoF.platoonInfo[team.platoonID].leader === true;
+                state.HoF.platoonInfo[team.platoonID].teamIDs.push(team.id);
+//adjust teamids
+
             }
 
         }
