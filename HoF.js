@@ -189,6 +189,7 @@ const Main = (() => {
 
 
 
+
     const SM = {
         RFP: "status_red",
     }
@@ -730,6 +731,7 @@ const Main = (() => {
             this.cover = false;
             this.blockLOS = false;
             this.conceal = false;
+            this.type = "Open";
             this.edges = {};
             this.terrainID = "";
             _.each(DIRECTIONS,a => {
@@ -1364,6 +1366,13 @@ log(weaponArray)
                         if (terrain.conceal === "Infantry" && hex.cover === false) {    
                             hex.conceal = "Infantry";
                         }
+                        if (terrain.type === "Difficult" && hex.type === "Open") {
+                            hex.type = "Difficult";
+                        }
+                        if (terrain.type === "Very Difficult") {
+                            hex.type = "Very Difficult";
+                        }
+
                     }
                 })
             }
@@ -1395,6 +1404,28 @@ log(weaponArray)
             }
         });
     
+
+        //Roads
+        _.each(paths,path => {
+            if (path.get("stroke").toLowerCase() === "#ffffff") {
+                let vertices = translatePoly(path);
+                for (let i=0;i<(vertices.length -1);i++) {
+                    let pt1 = vertices[i];
+                    let pt2 = vertices[i+1];
+                    let hex1 = HexMap[pt1.label()];
+                    let hex2 = HexMap[pt2.label()];
+                    hex1.type += ",Road";
+                    hex2.type += ",Road";
+                    let interCubes = hex1.cube.linedraw(hex2.cube);
+                    _.each(interCubes,cube => {
+                        let hex3 = HexMap[cube.label()];
+                        hex3.type += ",Road";
+                    })
+                }
+            }   
+        })
+
+
 
         let elapsed = Date.now()-start;
         log(`Terrain added in ${elapsed/1000} seconds`);
@@ -1510,6 +1541,7 @@ log(weaponArray)
 
         outputCard.body.push("Elevation: " + elevation);
         outputCard.body.push("Terrain: " + hex.terrain);
+        outputCard.body.push("Movement: " + hex.type);
         if (hex.terrainHeight > 0) {
             s = hex.terrainHeight === 1? " Storey":" Stories"
             outputCard.body.push("Terrain Height: " + hex.terrainHeight + s);
@@ -2194,15 +2226,19 @@ log(result)
         }
 
         //roll movement rates for whole unit and save to 'pull out' if any in unit move
+        PM();
+    }
+
+    const PM = () => {
         PlatoonMoves = {
             infMove: [randomInteger(6),randomInteger(6)].sort(),
             gunMove: [randomInteger(6)],
             vehMove: [randomInteger(6),randomInteger(6),randomInteger(6)].sort(),
         }
-
-
-
     }
+
+
+
 
     const Order = (msg) => {
         let Tag = msg.content.split(";");
@@ -2371,6 +2407,11 @@ log(result)
     const Move = (team) => {
         SetupCard(team.name,"",team.nation);
         let subtitle;
+        let hex = HexMap[team.hexLabel];
+        if ( Object.keys(PlatoonMoves).length === 0) {
+            PM();
+        }
+
         if (team.type.includes("Team")) {
             let move = 0;
             _.each(PlatoonMoves.infMove,roll => {
@@ -2409,7 +2450,9 @@ log(result)
             subtitle = '[Movement](#" class="showtip" title="' + subtitle + ')';   
 
             if (team.notes.includes("Tracked") || team.notes.includes("Half-Tracked")) {
-                outputCard.body.push("Movement: [#ff0000]" + maxMove + "+[/#] Hex" + s);
+                if (hex.type.includes("Open")) {
+                    outputCard.body.push("Movement: [#ff0000]" + maxMove + "+[/#] Hex" + s);
+                }
                 if (team.notes.includes("Tracked")) {
                     outputCard.body.push("Difficult or Very Difficult Ground: [#ff0000]" + diffMove + "+[/#] Hex" + s2);
                     outputCard.body.push("Very Difficult Ground Requires a Terrain Check");
@@ -2417,16 +2460,23 @@ log(result)
                     outputCard.body.push("Difficult Ground: [#ff0000]" + diffMove + "+[/#] Hex" + s2);
                     outputCard.body.push("Very Difficult Ground may not be entered");
                 }
-                outputCard.body.push("Movement entirely on a Road adds 6 Hexes");
+                if (hex.type.includes("Road")) {
+                    outputCard.body.push("Movement entirely on a Road adds 6 Hexes");
+                }
             }
             if (team.notes.includes("Wheeled")) {
-                outputCard.body.push("Movement: [#ff0000]" + maxMove + "+[/#] Hex" + s);
+                if (hex.type.includes("Open")) {
+                    outputCard.body.push("Movement: [#ff0000]" + maxMove + "+[/#] Hex" + s);
+                }
                 outputCard.body.push("Difficult Ground: [#ff0000]" + diffMove + "+[/#] Hex" + s2);
                 outputCard.body.push("Difficult Ground also requires a Terrain Check");
                 outputCard.body.push("Very Difficult Ground may not be entered");
-                outputCard.body.push("Movement entirely on a Road adds 12 Hexes");
+                if (hex.type.includes("Road")) {
+                    outputCard.body.push("Movement entirely on a Road adds 12 Hexes");
+                }
             }
-            outputCard.body.push("Unless following a road, Movement more than 6 Hexes allows only one pivot at the start of the Move");
+            outputCard.body.push("Unless following a road, Vehicles can only Turn in the first 6 Hexes of movement");
+            outputCard.body.push("Reversing coses 2 Hexes/1 Hex of movement");
 
 
 
