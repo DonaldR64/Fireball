@@ -1091,6 +1091,16 @@ log(weaponArray)
             } else if (finalStatus === "Killed") {
                 outputCard.body.push("The Target Team Routed and cannot be Rallied");
             }
+        } else if (ability === "Command Platoon Leader") {
+
+
+
+        } else if (ability === "Field Promotion") {
+
+
+
+
+            
         }
         PrintCard();
     }
