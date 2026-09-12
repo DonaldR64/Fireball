@@ -893,6 +893,8 @@ log(weaponArray)
                 })  
             } else if (newStatus === "Killed") {
                 this.token.set("status_dead",true);
+
+
 //move to map layer
             }
         }
@@ -2036,7 +2038,11 @@ log(weaponArray)
             }
         })
 
-
+        _.each(state.HoF.platoonInfo,platoonInfo => {
+            if (platoonInfo.leader === "Killed") {
+                platoonInfo.leader = false;
+            }
+        })
 
     }
 
@@ -2472,9 +2478,14 @@ log(team.notes)
         }
 
         //check if missing a PL
-        if (state.HoF.platoonInfo[team.platoonID].vehiclePlatoon === false && state.HoF.platoonInfo[team.platoonID].leader === false) {
+log("Leader")
+log(state.HoF.platoonInfo[team.platoonID].leader)
+log("Vehicle Platoon")
+log(state.HoF.platoonInfo[team.platoonID].vehiclePlatoon)
+        if (state.HoF.platoonInfo[team.platoonID].vehiclePlatoon === false && state.HoF.platoonInfo[team.platoonID].leader === false && status !== "Killed") {
             let trainingCheck = team.Check(0);
-            if (trainingCheck === true) {
+log(trainingCheck)
+            if (trainingCheck.result === true) {
                 outputCard.body.push("[hr]");
                 outputCard.body.push("One of the Platoon Sergeants has assumed Leadership of the Platoon");
                 //place a leader token on spot, name it etc
@@ -2488,13 +2499,15 @@ log(team.notes)
                     outputCard.body.push(leader.name + " has assumed Leadership of the Platoon");
                     outputCard.body.push("He immediately activates this Team and any others in LOS");
                     groupAct = "Platoon";
-                    state.HoF.platoonInfo[team.platoonID].leader === true;
-                    let teamIDs = state.HoF.platoonInfo[team.platoonID].teamIDs;
+                    let platoonInfo = state.HoF.platoonInfo[team.platoonID];
+                    platoonInfo.leader === true;
+                    let teamIDs = platoonInfo.teamIDs;
                     let index = teamIDs.indexOf(platoonInfo.leaderID);
                     teamIDs.splice(index,1);
                     teamIDs.push(leader.id);
-                    state.HoF.platoonInfo[team.platoonID].leaderID = leader.id;                    
-                    state.HoF.platoonInfo[team.platoonID].teamIDs = teamIDs;
+                    platoonInfo.leaderID = leader.id;                    
+                    platoonInfo.teamIDs = teamIDs;
+                    state.HoF.platoonInfo[team.platoonID] = platoonInfo;
                     leader.token.set({
                         aura1_color: "#ffffff",
                         aura1_radius: 5,
@@ -2544,13 +2557,17 @@ log(team.notes)
         //do the RFPs etc when select Move/Fire on each team individually
         //make all team(s) green aura to signify which can be given orders
         _.each(teams,team => {
-            team.SetAct("Active");
-            team.command = false;
-            team.token.set(SM.directed, false);
-            team.token.set(SM.moveup,false);
-
-            if (heroPointUsed) {
+            if (heroPointUsed && team.token.get(Nations[team.nation].flag) === false) {
+                team.SetAct("Active");
+                team.command = false;
+                team.token.set(SM.directed, false);
+                team.token.set(SM.moveup,false);
                 team.token.set(Nations[team.nation].flag,true);
+            } else if (team.Act() === "Unactivated") {
+                team.SetAct("Active");
+                team.command = false;
+                team.token.set(SM.directed, false);
+                team.token.set(SM.moveup,false);
             }
         })
 
