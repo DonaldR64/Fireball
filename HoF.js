@@ -106,7 +106,7 @@ const Main = (() => {
             "borderColour": "#FF0000",
             "borderStyle": "5px ridge",
             "flag": "status_Soviet::6433738",
-            "PL Character ID": "",
+            "PL Character ID": "-P1AvRfczzbBj0KaUMXb",
             "Sgt": "Serzhánt",
             "Lt": "Leytenant",
             "Cpt": "Kapitán",
@@ -966,7 +966,7 @@ log(weaponArray)
                     outputCard.body.push("Team Rallies as out of LOS");
                     rally = true;
                 } else {
-                    if (totalRFP === 0) {
+                    if (this.token.get(SM.RFP) === false) {
                         let rallyCheck = this.Check(0);
                         outputCard.body.push("Rally Check " + rallyCheck.tip);
                         rally = rallyCheck.result;
@@ -987,97 +987,107 @@ log(weaponArray)
             if (this.token.get(SM.RFP) === false) {
                 return startStatus;
             }
-            let rfp = [0,0]; //non cover and cover RFP
-            if (this.token.get(SM.RFP)) {
-                rfp = this.token.get("bar3_value").split("/").map(e => parseInt(e));
-            }
+            let rfp = this.token.get("bar3_value").split("/").map(e => parseInt(e));
+        
             let finalStatus = DeepCopy(startStatus);
 
             outputCard.body.push("Enemy Fire Resolution");
-            let noun = "Cover";
+            let noun1 = startStatus === "Suppressed" ? "Suppressed":"No Cover";
+            let noun2 = startStatus === "Suppressed" ? "Suppressed":"Cover";
             let qualityReroll = false;
 
             if (this.type === "Vehicle") {
                 rfp[1] += rfp[0];
                 rfp[0] = 0;
-                noun = "Vehicle";
+                noun2 = "Vehicle";
                 qualityReroll = true; //doesnt get
             }
-            if (rfp[0] > 0) {
-                let rolls = [];
+            let rolls = [];
+            let tip = "";
 
-                for (let i=0;i<rfp[0];i++) {
-                    let roll = randomInteger(6);
-                    rolls.push(roll);
-                    let tip;
-                    if (this.quality === "Elite" && qualityReroll === false && roll === 1) {
-                        roll = randomInteger(6);
-                        rolls[rolls.length - 1] = roll + "r";
-                        qualityReroll = true;
-                    }
-                    if (this.quality === "Poor" && qualityReroll === false && roll === 6) {
-                        roll = randomInteger(6);
-                        rolls[rolls.length - 1] = roll + "r";
-                        qualityReroll = true;
-                    }
-                    if (startStatus === "Suppressed") {
-                        if (roll < 2) {finalStatus = "Killed"};
-                        if (roll === 2 || roll === 3) {finalStatus = "Suppressed"};
-                        tip = "<br>Suppressed<br>Killed on 1<br>Suppressed on 2 or 3";
-                    } else {
-                        if (roll < 3) {finalStatus = "Killed"};
-                        if (roll === 3) {finalStatus = "Suppressed"};
-                        tip = "<br>Killed on 1 or 2<br>Suppressed on 3";
-                    }
-                    rolls.sort().reverse();
-                    tip = "Rolls: " + rolls.toString() + tip;
-                    let res = '[' + states[finalStatus] + '](#" class="showtip" title="' + tip + ')';  
-                    outputCard.body.push("Fire (No Cover): " + res);
+            for (let i=0;i<rfp[0];i++) {
+                let roll = randomInteger(6);
+                rolls.push(roll);
+                if (this.quality === "Elite" && qualityReroll === false && roll === 1) {
+                    roll = randomInteger(6);
+                    rolls[rolls.length - 1] = roll + "r";
+                    qualityReroll = true;
+                    tip += "<br>Elite Reroll";
                 }
-            }
-            if (rfp[1] > 0 && finalStatus !== "Killed") {
-                let rolls = [];
-                let reroll = false;
-                for (let i=0;i<rfp[1];i++) {
-                    let roll = randomInteger(6);
-                    rolls.push(roll);
-                    if (this.quality === "Elite" && qualityReroll === false && roll === 1) {
-                        roll = randomInteger(6);
-                        rolls[rolls.length - 1] = roll + "r";
-                        qualityReroll = true;
-                    }
-                    if (this.quality === "Poor" && qualityReroll === false && roll === 6) {
-                        roll = randomInteger(6);
-                        rolls[rolls.length - 1] = roll + "r";
-                        qualityReroll = true;
-                    }
-                    if (startStatus === "Suppressed" && this.type !== "Vehicle" && roll === 1 && reroll === false) {
-                        roll = randomInteger(6);
-                        rolls[roll.length - 1] = roll + "r";
-                        reroll = true;
-                    } 
+                if (this.quality === "Poor" && qualityReroll === false && roll === 6) {
+                    roll = randomInteger(6);
+                    rolls[rolls.length - 1] = roll + "r";
+                    qualityReroll = true;
+                    tip += "<br>Poor Reroll";
+                }
+                if (startStatus === "Suppressed") {
                     if (roll < 2) {finalStatus = "Killed"};
                     if (roll === 2 || roll === 3) {finalStatus = "Suppressed"};
+                } else {
+                    if (roll < 3) {finalStatus = "Killed"};
+                    if (roll === 3) {finalStatus = "Suppressed"};
                 }
-                rolls.sort();rolls.reverse();
-                let tip = "Rolls: " + rolls.toString();
-                tip += "<br>Killed on 1";
-                tip += "<br>Suppressed on 2 or 3";
-                let res = '[' + states[finalStatus] + '](#" class="showtip" title="' + tip + ')';  
-                outputCard.body.push("Fire (" + noun + "): " + res);
             }
+            if (rolls.length > 0) {
+                rolls.sort().reverse();
+                tip = "Rolls: " + rolls.toString() + tip;
+                if (startStatus === "Suppressed") {
+                    tip += "<br>Suppressed<br>Killed on 1<br>Otherwise Suppressed";
+                } else {
+                    tip += "<br>Killed on 1 or 2<br>Suppressed on 3";
+                }
+                let res = '[' + finalStatus + '](#" class="showtip" title="' + tip + ')';  
+                outputCard.body.push("Fire (" + noun1 + "): " + res);
+            }
+            rolls = [];
+
+            let reroll = false;
+            tip = "";
+            for (let i=0;i<rfp[1];i++) {
+                let roll = randomInteger(6);
+                rolls.push(roll);
+                if (this.quality === "Elite" && qualityReroll === false && roll === 1) {
+                    roll = randomInteger(6);
+                    rolls[rolls.length - 1] = roll + "r";
+                    qualityReroll = true;
+                    tip += "<br>Elite Reroll";
+                }
+                if (this.quality === "Poor" && qualityReroll === false && roll === 6) {
+                    roll = randomInteger(6);
+                    rolls[rolls.length - 1] = roll + "r";
+                    qualityReroll = true;
+                    tip += "<br>Poor Reroll";
+                }
+                if (startStatus === "Suppressed" && this.type !== "Vehicle" && roll === 1 && reroll === false) {
+                    roll = randomInteger(6);
+                    rolls[roll.length - 1] = roll + "r";
+                    reroll = true;
+                    tip += "<br>Suppressed in Cover Reroll"
+                } 
+                if (roll < 2) {finalStatus = "Killed"};
+                if (roll === 2 || roll === 3) {finalStatus = "Suppressed"};
+            }
+            if (rolls.length > 0) {
+                rolls.sort();rolls.reverse();
+                tip = "Rolls: " + rolls.toString() + tip + "<br>Killed on 1<br>Suppressed on 2 or 3";
+                let res = '[' + finalStatus + '](#" class="showtip" title="' + tip + ')';  
+                outputCard.body.push("Fire (" + noun2 + "): " + res);
+            }
+
             this.SetStatus(finalStatus);
             this.token.set("bar3_value","0/0");
+            this.token.set(SM.RFP,false);
             return finalStatus;
         }
 
         Name(rank) {
             let surname = SurnameList[this.nation][randomInteger(SurnameList[this.nation].length) - 1];
-            let firstName = FirstNameList[this.nation][randomInteger(FirstNameList[this].length) - 1];
-            let rank = Nations[this.nation][rank];
+            let firstName = FirstNameList[this.nation][randomInteger(FirstNameList[this.nation].length) - 1];
+            rank = Nations[this.nation][rank];
             let name = rank + " " + firstName + " " + surname;
             this.name = name;
             this.token.set("name",name);
+            return name;
         }
 
 
@@ -2335,23 +2345,25 @@ log(result)
             vehiclePlatoon: vehiclePlatoon,
             nation: platoon[0].nation,
             leader: true,
+            leaderID: "",
         }
         state.HoF.platoonInfo[platoonID] = platoonInfo;
 
         let num = 0;
         _.each(platoon,team => {
-            let name = team.charName.split(",")[0].trim();
+            let name;
+log(team.notes)
             if (team.notes.includes("Leader")) {
-                team.Name("Lt");
-            }
-            if (team.notes.includes("Company Commander")) {
-                team.Name("Cpt");
+                name = team.Name("Lt");
+                platoonInfo.leaderID = team.id;
+            } else if (team.notes.includes("Company Commander")) {
+                name = team.Name("Cpt");
+                platoonInfo.leaderID = team.id;
             } else {
+                name = team.charName.split(",")[0].trim();
                 num++;
                 name += " " + platoonLetter + "/" + num;
             }
-
-
 
             team.token.set({
                 name: name,
@@ -2469,22 +2481,39 @@ log(result)
                 let cID = Nations[team.nation]["PL Character ID"]
                 
     //make sure is a Team in array and set platoon ID
-                let team = summonToken(cID,HexMap[team.hexLabel].centre,{w: 70,h: 70},0,"objects");
-                team.Name("Sgt");
-                outputCard.body.push(team.name + " has assumed Leadership of the Platoon");
-                outputCard.body.push("He immediately activates this Team and any others in LOS");
-                groupAct = "Platoon";
-                state.HoF.platoonInfo[team.platoonID].leader === true;
-                state.HoF.platoonInfo[team.platoonID].teamIDs.push(team.id);
-//adjust teamids
-
+                let token = summonToken(cID,HexMap[team.hexLabel].centre,{w: 70,h: 70},0,"objects");
+                if (token) {
+                    let leader = new Team(token.id);
+                    leader.Name("Sgt");
+                    outputCard.body.push(leader.name + " has assumed Leadership of the Platoon");
+                    outputCard.body.push("He immediately activates this Team and any others in LOS");
+                    groupAct = "Platoon";
+                    state.HoF.platoonInfo[team.platoonID].leader === true;
+                    let teamIDs = state.HoF.platoonInfo[team.platoonID].teamIDs;
+                    let index = teamIDs.indexOf(platoonInfo.leaderID);
+                    teamIDs.splice(index,1);
+                    teamIDs.push(leader.id);
+                    state.HoF.platoonInfo[team.platoonID].leaderID = leader.id;                    
+                    state.HoF.platoonInfo[team.platoonID].teamIDs = teamIDs;
+                    leader.token.set({
+                        aura1_color: "#ffffff",
+                        aura1_radius: 5,
+                        aura2_color: "transparent",
+                        showplayers_aura1: true,
+                        showplayers_name: true,
+                        bar3_value: "0/0",
+                        statusmarkers: "",
+                        tint_color: "transparent",
+                        disableSnapping: false,
+                        disableTokenMenu: false,
+                    })
+                    leader.platoonID = team.platoonID;
+                    leader.token.set("status_" + state.HoF.platoonInfo[team.platoonID].marker,true);
+                    team = leader;
+                }
             }
 
         }
-
-
-
-
 
 
         _.each(Teams,team => {
@@ -2573,26 +2602,27 @@ log(result)
 
         SetupCard(team.name,order,team.nation);
         if (team.Act() !== "Active") {
-            outputCard.body.push("Team not Activated");
+            outputCard.body.push("Team is not Active");
             PrintCard();
             return;
         }
         //Order Declared, now do rally and resolve RFP
         let status = team.Rally();
+        let flag = team.token.get(SM.RFP);
         status = team.ResolveFire();
         team.SetAct("Activated");
         if (status === "Killed") {
             PrintCard();
         } else {
             if (order === "Move") {
-                if (totalRFP > 0) {PrintCard()};
+                if (flag) {PrintCard()};
                 Move(team);
             } else if (order === "Fire") {
                 if (status === "Suppressed") {
                     outputCard.body.push("Suppressed Units Cannot Fire");
                     PrintCard();
                 } else {
-                    if (totalRFP > 0) {PrintCard()};
+                    if (flag) {PrintCard()};
                     Fire(team,target);
                 }
             }
