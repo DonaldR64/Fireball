@@ -1024,10 +1024,10 @@ log(weaponArray)
                 }
                 if (startStatus === "Suppressed") {
                     if (roll < 2) {finalStatus = "Killed"};
-                    if (roll === 2 || roll === 3) {finalStatus = "Suppressed"};
+                    if ((roll === 2 || roll === 3) && finalStatus !== "Killed") {finalStatus = "Suppressed"};
                 } else {
                     if (roll < 3) {finalStatus = "Killed"};
-                    if (roll === 3) {finalStatus = "Suppressed"};
+                    if (roll === 3 && finalStatus !== "Killed") {finalStatus = "Suppressed"};
                 }
             }
             if (rolls.length > 0) {
@@ -1067,7 +1067,7 @@ log(weaponArray)
                     tip += "<br>Suppressed in Cover Reroll"
                 } 
                 if (roll < 2) {finalStatus = "Killed"};
-                if (roll === 2 || roll === 3) {finalStatus = "Suppressed"};
+                if ((roll === 2 || roll === 3) && finalStatus !== "Killed") {finalStatus = "Suppressed"};
             }
             if (rolls.length > 0) {
                 rolls.sort();rolls.reverse();
@@ -2478,7 +2478,7 @@ log(team.notes)
         }
 
         //check if missing a PL
-
+        let newLeader = false;
         if (state.HoF.platoonInfo[team.platoonID].vehiclePlatoon === false && state.HoF.platoonInfo[team.platoonID].leader === false && status !== "Killed") {
             let trainingCheck = team.Check(0);
             if (trainingCheck.result === true) {
@@ -2501,6 +2501,8 @@ log(team.notes)
                     platoonInfo.leaderID = leader.id;                    
                     platoonInfo.teamIDs = teamIDs;
                     state.HoF.platoonInfo[team.platoonID] = platoonInfo;
+                    state.HoF.platoonIDs[leader.id] = team.platoonID;
+
                     leader.token.set({
                         aura1_color: "#ffffff",
                         aura1_radius: 5,
@@ -2515,7 +2517,7 @@ log(team.notes)
                     })
                     leader.platoonID = team.platoonID;
                     leader.token.set("status_" + state.HoF.platoonInfo[team.platoonID].marker,true);
-                    team = leader;
+                    newLeader = true;
                 }
             }
 
@@ -2529,6 +2531,8 @@ log(team.notes)
         })
 
         let teams = [team];
+
+        
         let platoonInfo = state.HoF.platoonInfo[team.platoonID];
         if (groupAct === "Platoon") {
             //activate entire platoon in LOS from team
@@ -2569,7 +2573,7 @@ log(team.notes)
         } else if (groupAct === "Platoon") {
             if (platoonInfo.leader === "Killed") {
                 outputCard.body.push("Any Teams in LOS are Activated, but only one Team can Move/Fire");
-            } else {
+            } else if (newLeader === false) {
                 outputCard.body.push("Any Teams in LOS are Activated and can be given an Order");
             }
         }
