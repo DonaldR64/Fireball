@@ -1,63 +1,35 @@
-    if (action === "Fire" && errorMsg.length === 0) {
-//mortars
-        FireInfo = {};
-        if (targetLOS.los === true) {
-            if (element.individual === "Sniper") {
-                if (CCCheck(target) === true) {
-                    errorMsg.push(target.name + " is locked in Close Combat and may not be fired at");
-                } else {
-                    FireInfo = {
-                        shooter: element,
-                        targets: [target],
-                        losResult: targetLOS,
-                    }
-                }
-            } else {
-                let targets = [target];
-                //is target in a building ? If so, ALL in building added
-                if (HexMap[target.hexLabel].terrain.includes("Building")) {
-                    let terrainID = HexMap[target.hexLabel].terrainID;
-                    let targets = [];
-                    _.each(Elements,element => {
-                        if (element.id !== target.id) {
-                            let hex = HexMap[element.hexLabel];
-                            if (hex.terrainID === terrainID) {
-                                targets.push(element);
-                            }
-                        }
-                    })
-                } else {
-                    if (target.leader === true) {
-                        let follower = target.Followers()[0];
-                        if (follower) {
-                            targets.unshift(follower);
-                        }
-                    } else {
-                        let leader = target.Leader();
-                        if (leader) {
-                            targets.push(leader);
-                        }
-                    }
-                }
-                let inCC = false;
-                for (let i=0;i<targets.length;i++) {
-                    if (CCCheck(targets[i]) === true) {
-                        inCC = targets[i].name;
-                        break;
-                    } 
-                }
-                if (inCC === false) {
-                    FireInfo = {
-                        shooter: element,
-                        targets: targets,
-                        losResult: targetLOS,
-                    }
-                } else {
-                    errorMsg.push(inCC + " is locked in Close Combat and may not be fired at");
-                }
-            } 
-        } else {
-            errorMsg.push("No LOS to Target");
-        }
+NewLeader() {
+    //place a leader token on spot, name it etc
+    let cID = Nations[this.nation]["PL Character ID"]
+    let token = summonToken(cID,HexMap[this.hexLabel].centre,{w: 70,h: 70},0,"objects");
+    if (token) {
+        outputCard.body.push("[hr]");
+        let leader = new Team(token.id);
+        leader.Name("Sgt");
+        let platoonInfo = state.HoF.platoonInfo[this.platoonID];
+        platoonInfo.leader === true;
+        let teamIDs = platoonInfo.teamIDs;
+        let index = teamIDs.indexOf(platoonInfo.leaderID);
+        teamIDs.splice(index,1);
+        teamIDs.push(leader.id);
+        platoonInfo.leaderID = leader.id;                    
+        platoonInfo.teamIDs = teamIDs;
+        state.HoF.platoonInfo[this.platoonID] = platoonInfo;
+        state.HoF.platoonIDs[leader.id] = actTeam.platoonID;
+        leader.token.set({
+            aura1_color: "#ffffff",
+            aura1_radius: 5,
+            aura2_color: "transparent",
+            showplayers_aura1: true,
+            showplayers_name: true,
+            bar3_value: "0/0",
+            statusmarkers: "",
+            tint_color: "transparent",
+            disableSnapping: false,
+            disableTokenMenu: false,
+        })
+        leader.platoonID = this.platoonID;
+        leader.token.set("status_" + platoonInfo.marker,true);
+        return leader;
     }
-
+}
