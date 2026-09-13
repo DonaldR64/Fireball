@@ -987,7 +987,6 @@ log(weaponArray)
         
             let finalStatus = this.Status();
 
-            outputCard.body.push("Enemy Fire Resolution");
             let noun1 = startStatus === "Suppressed" ? "Suppressed":"No Cover";
             let noun2 = startStatus === "Suppressed" ? "Suppressed":"Cover";
             let qualityReroll = false;
@@ -2501,7 +2500,7 @@ log(team.notes)
             errorMsgs.push("Activating during other Player's turn requires a Hero Point to be used");
         }
         if (actTeamAct === "Activated" && heroPointUsed === false && actTeam.player === state.HoF.currentPlayer) {
-            errorMsgs.push(groupAct + " has already Activated; a Hero Point must be Used");
+            errorMsgs.push("Team has already Activated; a Hero Point must be Used");
         }
         if (heroPointUsed && availableHP === 0) {
             errorMsgs.push("No Hero Points Available");
@@ -2510,7 +2509,7 @@ log(team.notes)
             errorMsgs.push("No Order Points Remain, a Hero Point must be used");
         }
         if (heroPointUsed && actTeam.token.get(Nations[actTeam.nation].flag)) {
-            errorMsgs.push("This " + groupAct + " has already used a Hero Point this turn");
+            errorMsgs.push("This Team has already used a Hero Point this turn");
         }
         if (actTeamAct === "Active") {
             errorMsgs.push("This Team is already Activated");
@@ -2539,7 +2538,7 @@ log(team.notes)
             let percent = Math.round(functioning/platoonInfo.teamIDs.length * 100);
             if (percent < 50) {
                 state.HoF.platoonInfo[actTeam.platoonID].leader = false;
-                platoonAct = "Team";
+                platoonAct = false;
                 if (functioning > 1) {
                     outputCard.body.push("Due to Casualties/Suppression, only this Team will be Activated");
                 }
@@ -2561,7 +2560,7 @@ log(team.notes)
                     if (!leader) {
                         outputCard.body.push("Leader Should have been Created");
                     } else {
-                        platoonAct = "Platoon";
+                        platoonAct = true;
                         outputCard.body.push("[hr]");
                         outputCard.body.push(leader.name + " has assumed Leadership of the Platoo n, rallying this Team");
                         outputCard.body.push("He immediately activates this Team and any others in LOS");
@@ -2575,7 +2574,7 @@ log(team.notes)
         }
 
         let actTeams = [actTeam];
-        if (platoonAct === "Platoon") {
+        if (platoonAct === true) {
             //activate entire platoon in LOS from team
             let ids = platoonInfo.teamIDs;
             _.each(ids,id2 => {
@@ -2588,7 +2587,7 @@ log(team.notes)
                             team2.command = false;
                             team2.token.set(SM.directed, false);
                             team2.token.set(SM.moveup,false);
-                            team2.token.set(Nations[team.nation].flag,true);
+                            team2.token.set(Nations[team2.nation].flag,true);
                             actTeams.push(team2)
                         } else if (team2.Act() === "Unactivated") {
                             team2.SetAct("Active");
