@@ -2403,28 +2403,28 @@ log(team.notes)
         let playerID = msg.playerid;
         let groupAct = Tag[1];
         let heroPointUsed = Tag[2] === "Yes" ? true:false;
-        let team = Teams[id];
-        let availableHP = state.HoF.heroPoints[team.player];
-        let availableOP = state.HoF.orderPoints[team.player];
-        SetupCard(team.name,"Activate",team.nation);
+        let actTeam = Teams[id];
+        let availableHP = state.HoF.heroPoints[actTeam.player];
+        let availableOP = state.HoF.orderPoints[actTeam.player];
+        SetupCard(actTeam.name,"Activate",actTeam.nation);
         let errorMsgs = [];
 
-        if (team.player !== state.HoF.currentPlayer && heroPointUsed === false) {
+        if (actTeam.player !== state.HoF.currentPlayer && heroPointUsed === false) {
             errorMsgs.push("Activating during other Player's turn requires a Hero Point to be used");
         }
-        if (team.Act() === "Activated" && heroPointUsed === false && team.player === state.HoF.currentPlayer) {
+        if (actTeam.Act() === "Activated" && heroPointUsed === false && actTeam.player === state.HoF.currentPlayer) {
             errorMsgs.push(groupAct + " has already Activated; a Hero Point must be Used");
         }
         if (heroPointUsed && availableHP === 0) {
             errorMsgs.push("No Hero Points Available");
         }
-        if (team.Act() === "Unactivated" && availableOP === 0 && heroPointUsed === false) {
+        if (actTeam.Act() === "Unactivated" && availableOP === 0 && heroPointUsed === false) {
             errorMsgs.push("No Order Points Remain, a Hero Point must be used");
         }
-        if (heroPointUsed && team.token.get(Nations[team.nation].flag)) {
+        if (heroPointUsed && actTeam.token.get(Nations[actTeam.nation].flag)) {
             errorMsgs.push("This " + groupAct + " has already used a Hero Point this turn");
         }
-        if (team.Act() === "Active") {
+        if (actTeam.Act() === "Active") {
             errorMsgs.push("This Team is already Activated");
         }
 
@@ -2434,9 +2434,9 @@ log(team.notes)
         }
         
         //check re Vehicle if can act as a leader
-        if (state.HoF.platoonInfo[team.platoonID].vehiclePlatoon === true) {
+        if (state.HoF.platoonInfo[actTeam.platoonID].vehiclePlatoon === true) {
             let functioning = 0;
-            _.each(state.HoF.platoonInfo[team.platoonID].teamIDs,teamID => {
+            _.each(state.HoF.platoonInfo[actTeam.platoonID].teamIDs,teamID => {
                 let t2 = Teams[teamID];
                 if (t2 && t2.Status() !== "Suppressed") {
                     functioning++;
@@ -2444,32 +2444,28 @@ log(team.notes)
             })
             let percent = Math.round(functioning/state.HoF.platoonInfo.teamIDs.length * 100);
             if (percent < 50) {
-                state.HoF.platoonInfo[team.platoonID].leader = false;
+                state.HoF.platoonInfo[actTeam.platoonID].leader = false;
                 groupAct = "Team";
                 outputCard.body.push("Due to Casualties/Suppression, only this Team will be Activated");
             }
         }
 
-
-
-
-
         //rally activated team, then resolve fire, then proceed
-        let status = team.Rally();
-        status = team.ResolveFire();
+        let status = actTeam.Rally();
+        status = actTeam.ResolveFire();
 
         let teamKilled = false;
         if (status === "Killed") {
             teamKilled = true;
             if (groupAct === "Platoon") {
-                state.HoF.platoonInfo[team.platoonID].leader = "Killed";
-                if (team.type === "Vehicle") {
+                state.HoF.platoonInfo[actTeam.platoonID].leader = "Killed";
+                if (actTeam.type === "Vehicle") {
                     outputCard.body.push("The Team abandons the vehicle due to damage");
                 } else {
                     outputCard.body.push("The Leader's team routs");
                 }
             } else {
-                if (team.type === "Vehicle") {
+                if (actTeam.type === "Vehicle") {
                     outputCard.body.push("The Team abandons the vehicle due to damage");
                 } else {
                     outputCard.body.push("The Team routs or is unable to fight any further");
@@ -2477,14 +2473,15 @@ log(team.notes)
             }
         }
 
+
         //check if missing a PL
         let newLeader = false;
-        if (state.HoF.platoonInfo[team.platoonID].vehiclePlatoon === false && state.HoF.platoonInfo[team.platoonID].leader === false && status !== "Killed") {
-            let trainingCheck = team.Check(0);
+        if (state.HoF.platoonInfo[actTeam.platoonID].vehiclePlatoon === false && state.HoF.platoonInfo[actTeam.platoonID].leader === false && status !== "Killed") {
+            let trainingCheck = actTeam.Check(0);
             if (trainingCheck.result === true) {
                 //place a leader token on spot, name it etc
-                let cID = Nations[team.nation]["PL Character ID"]
-                let token = summonToken(cID,HexMap[team.hexLabel].centre,{w: 70,h: 70},0,"objects");
+                let cID = Nations[actTeam.nation]["PL Character ID"]
+                let token = summonToken(cID,HexMap[actTeam.hexLabel].centre,{w: 70,h: 70},0,"objects");
                 if (token) {
                     outputCard.body.push("[hr]");
                     let leader = new Team(token.id);
@@ -2492,7 +2489,7 @@ log(team.notes)
                     outputCard.body.push(leader.name + " has assumed Leadership of the Platoon");
                     outputCard.body.push("He immediately activates this Team and any others in LOS");
                     groupAct = "Platoon";
-                    let platoonInfo = state.HoF.platoonInfo[team.platoonID];
+                    let platoonInfo = state.HoF.platoonInfo[actTeam.platoonID];
                     platoonInfo.leader === true;
                     let teamIDs = platoonInfo.teamIDs;
                     let index = teamIDs.indexOf(platoonInfo.leaderID);
@@ -2500,8 +2497,8 @@ log(team.notes)
                     teamIDs.push(leader.id);
                     platoonInfo.leaderID = leader.id;                    
                     platoonInfo.teamIDs = teamIDs;
-                    state.HoF.platoonInfo[team.platoonID] = platoonInfo;
-                    state.HoF.platoonIDs[leader.id] = team.platoonID;
+                    state.HoF.platoonInfo[actTeam.platoonID] = platoonInfo;
+                    state.HoF.platoonIDs[leader.id] = actTeam.platoonID;
 
                     leader.token.set({
                         aura1_color: "#ffffff",
@@ -2515,9 +2512,10 @@ log(team.notes)
                         disableSnapping: false,
                         disableTokenMenu: false,
                     })
-                    leader.platoonID = team.platoonID;
-                    leader.token.set("status_" + state.HoF.platoonInfo[team.platoonID].marker,true);
+                    leader.platoonID = actTeam.platoonID;
+                    leader.token.set("status_" + state.HoF.platoonInfo[actTeam.platoonID].marker,true);
                     newLeader = true;
+                    actTeam = leader;
                 }
             }
 
@@ -2530,18 +2528,17 @@ log(team.notes)
             }
         })
 
-        let teams = [team];
+        let teams = [actTeam];
 
-        
-        let platoonInfo = state.HoF.platoonInfo[team.platoonID];
+        let platoonInfo = state.HoF.platoonInfo[actTeam.platoonID];
         if (groupAct === "Platoon") {
             //activate entire platoon in LOS from team
             let ids = platoonInfo.teamIDs;
             _.each(ids,id2 => {
-                if(id2 !== id) {
+                if(id2 !== actTeam.id) {
                     let team2 = Teams[id2];
                     if (team2) {
-                        let los = LOS(team,team2);
+                        let los = LOS(actTeam,team2);
                         if (los.los === true) {
                             teams.push(team2)
                         }
@@ -2579,7 +2576,7 @@ log(team.notes)
         }
         if (heroPointUsed === false) {
             availableOP--;
-            state.HoF.orderPoints[team.player] = availableOP;
+            state.HoF.orderPoints[actTeam.player] = availableOP;
             outputCard.body.push("[hr]");
             outputCard.body.push("Remaining Order Points: " + availableOP);
         }
@@ -2587,8 +2584,8 @@ log(team.notes)
 
         if (heroPointUsed) {
             availableHP--;
-            state.HoF.heroPoints[team.player] = availableHP;
-            SetupCard("Hero Points","",team.nation);
+            state.HoF.heroPoints[actTeam.player] = availableHP;
+            SetupCard("Hero Points","",actTeam.nation);
             outputCard.body.push("Remaining: " + availableHP);
             PrintCard(playerID);
         }
