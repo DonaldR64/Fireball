@@ -2473,7 +2473,9 @@ log(team.notes)
             }
         }
 
+        let teams = [actTeam];
 
+log(state.HoF.platoonInfo[actTeam.platoonID].leader)
         //check if missing a PL
         let newLeader = false;
         if (state.HoF.platoonInfo[actTeam.platoonID].vehiclePlatoon === false && state.HoF.platoonInfo[actTeam.platoonID].leader === false && status !== "Killed") {
@@ -2499,7 +2501,7 @@ log(team.notes)
                     platoonInfo.teamIDs = teamIDs;
                     state.HoF.platoonInfo[actTeam.platoonID] = platoonInfo;
                     state.HoF.platoonIDs[leader.id] = actTeam.platoonID;
-
+                    state.HoF.platoonInfo[actTeam.platoonID].leader = true;
                     leader.token.set({
                         aura1_color: "#ffffff",
                         aura1_radius: 5,
@@ -2515,7 +2517,7 @@ log(team.notes)
                     leader.platoonID = actTeam.platoonID;
                     leader.token.set("status_" + state.HoF.platoonInfo[actTeam.platoonID].marker,true);
                     newLeader = true;
-                    actTeam = leader;
+                    teams.push(leader);
                 }
             }
 
@@ -2528,7 +2530,6 @@ log(team.notes)
             }
         })
 
-        let teams = [actTeam];
 
         let platoonInfo = state.HoF.platoonInfo[actTeam.platoonID];
         if (groupAct === "Platoon") {
@@ -2546,6 +2547,8 @@ log(team.notes)
                 }
             })
         }
+
+        teams = [...new Set(teams)];
 
         //Teams activate in four steps: Declare Orders, Rally (if applicable), Resolve RFPs, then Execute Orders.
         //do the RFPs etc when select Move/Fire on each team individually
