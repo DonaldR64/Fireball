@@ -945,8 +945,9 @@ log(weaponArray)
             return result;
         }
 
-        Rally() {
+        Rally(type = "Normal") {
             let status = this.Status();
+            let out = [];
             if (this.Status() === "Suppressed") {
                 //check LOS to enemy, if none to non-small teams, then auto, otherwise can rally check if no RFP
                 let enemyInSight = false;
@@ -965,21 +966,27 @@ log(weaponArray)
                     }
                 }
                 if (enemyInSight === false) {
-                    outputCard.body.push("Team Rallies as out of LOS");
+                    out.push("Team Rallies as out of LOS");
                     rally = true;
-                } else {
+                } else if (type === "Normal") {
                     if (this.token.get(SM.RFP) === false) {
                         let rallyCheck = this.Check(0);
-                        outputCard.body.push("Rally Check " + rallyCheck.tip);
+                        out.push("Rally Check " + rallyCheck.tip);
                         rally = rallyCheck.result;
                     } else {
-                        outputCard.body.push("Unable to Rally due to Enemy Fire");
+                        out.push("Unable to Rally due to Enemy Fire");
                     }
                 }
                 if (rally === true) {
                     this.SetStatus("Ready");
+                    status = "Ready";
                 }
-                outputCard.body.push("[hr]");
+                out.push("[hr]");
+                if (type === "Normal") {
+                    _.each(out,line => {
+                        outputCard.body.push(line);
+                    })
+                }
             }
             return status;
         }
@@ -2008,6 +2015,29 @@ log(weaponArray)
         }
         state.HoF.heroPoints[currentPlayer] = heroPoints;
 
+        //clear hero markers on all units as new turn
+        //if current player, set status to unactivated
+        let suppFlag = false;
+        _.each(Teams,team => {
+            team.token.set(Nations[team.nation].flag, false);
+            team.command = false;
+            if (team.player === currentPlayer) {
+                team.SetAct("Unactivated");
+            } else {
+                team.SetAct("Activated");
+                if (team.Status() === "Suppressed") {
+                    let status = team.Rally("EndAct");
+                    if (status === "Ready") {
+                        if (suppFlag === false) {
+                            SetupCard("Last Activation","",team.nation);
+                            suppFlag = true;
+                        }
+                        outputCard.body.push(team.name + " Rallied")
+                    }
+                }
+            }
+        })
+        if (suppFlag) {PrintCard()};
 
         //send hero points as a whisper
         let playerID = getKeyByValue(state.HoF.players,currentNation);
@@ -2025,18 +2055,6 @@ log(weaponArray)
         outputCard.body.push("Order Points: " + tip);
         state.HoF.orderPoints[currentPlayer] = orderPoints;
         PrintCard();
-
-        //clear hero markers on all units as new turn
-        //if current player, set status to unactivated
-        _.each(Teams,team => {
-            team.token.set(Nations[team.nation].flag, false);
-            team.command = false;
-            if (team.player === currentPlayer) {
-                team.SetAct("Unactivated");
-            } else {
-                team.SetAct("Activated");
-            }
-        })
 
         _.each(state.HoF.platoonInfo,platoonInfo => {
             if (platoonInfo.leader === "Killed") {
@@ -2406,7 +2424,6 @@ log(team.notes)
         let actTeam = Teams[id];
         let availableHP = state.HoF.heroPoints[actTeam.player];
         let availableOP = state.HoF.orderPoints[actTeam.player];
-        SetupCard(actTeam.name,"Activate",actTeam.nation);
         let errorMsgs = [];
 
         if (actTeam.player !== state.HoF.currentPlayer && heroPointUsed === false) {
@@ -2428,11 +2445,34 @@ log(team.notes)
             errorMsgs.push("This Team is already Activated");
         }
 
-        if (ErrorMsg(errorMsgs)) {
+
+        if (errorMsgs.length > 0) {
+            SetupCard(actTeam.name,"Activate",actTeam.nation);
+            ErrorMsg(errorMsgs)
             PrintCard();
             return;
         }
         
+        let suppFlag = false;
+        _.each(Teams,team2 => {
+            if (team2.Act() === "Active") {
+                team2.SetAct("Activated");
+                if (team2.Status() === "Suppressed") {
+                    let status = team2.Rally("EndAct");
+                    if (status === "Ready") {
+                        if (suppFlag === false) {
+                            SetupCard("Last Activation","",team2.nation);
+                            suppFlag = true;
+                        }
+                        outputCard.body.push(team2.name + " Rallied")
+                    }
+                }
+            }
+        })
+        if (suppFlag) {PrintCard()};
+
+        SetupCard(actTeam.name,"Activate",actTeam.nation);
+
         //check re Vehicle if can act as a leader
         if (state.HoF.platoonInfo[actTeam.platoonID].vehiclePlatoon === true) {
             let functioning = 0;
@@ -2523,14 +2563,6 @@ log(state.HoF.platoonInfo[actTeam.platoonID].leader)
             }
 
         }
-
-
-        _.each(Teams,team => {
-            if (team.Act() === "Active") {
-                team.SetAct("Activated");
-            }
-        })
-
 
         let platoonInfo = state.HoF.platoonInfo[actTeam.platoonID];
         if (groupAct === "Platoon") {
