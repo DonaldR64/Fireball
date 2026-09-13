@@ -984,8 +984,7 @@ log(weaponArray)
             return status;
         }
 
-        ResolveFire() {
-            let startStatus = this.Status();
+        ResolveFire(startStatus) {
             if (this.token.get(SM.RFP) === false) {
                 return startStatus;
             }
@@ -1245,7 +1244,8 @@ log(weaponArray)
             target.token.set(SM.moveup,true);
             outputCard.body.push(target.name + " can move an additional 3 Hexes to move up to the Leader");
         } else if (ability === "Rally") {
-            let finalStatus = target.ResolveFire();
+            let startStatus = target.Status();
+            let finalStatus = target.ResolveFire(startStatus);
             if (finalStatus === "Suppressed") {
                 let rallyCheck = target.Check(0);
                 outputCard.body.push("Rally Check " + rallyCheck.tip);
@@ -2451,8 +2451,9 @@ log(team.notes)
         }
 
         //rally activated team, then resolve fire, then proceed
+        let startStatus = actTeam.Status();
         let status = actTeam.Rally();
-        status = actTeam.ResolveFire();
+        status = actTeam.ResolveFire(startStatus);
 
         let teamKilled = false;
         if (status === "Killed") {
@@ -2621,9 +2622,10 @@ log(state.HoF.platoonInfo[actTeam.platoonID].leader)
             return;
         }
         //Order Declared, now do rally and resolve RFP
+        let startStatus = team.Status();
         let status = team.Rally();
         let flag = team.token.get(SM.RFP);
-        status = team.ResolveFire();
+        status = team.ResolveFire(startStatus);
         team.SetAct("Activated");
         if (status === "Killed") {
             PrintCard();
