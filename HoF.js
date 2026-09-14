@@ -2582,33 +2582,31 @@ log(trainingCheck)
             }
         }
 
-        let actTeams = [actTeam];
-        if (platoonAct === true) {
-            //activate entire platoon in LOS from team
-            let ids = platoonInfo.teamIDs;
-            _.each(ids,id2 => {
-                let team2 = Teams[id2];
-                if (team2) {
-                    let los = LOS(actTeam,team2);
-                    if (los.los === true) {
-                        if (heroPointUsed && team2.token.get(Nations[team2.nation].flag) === false) {
-                            team2.SetAct("Active");
-                            team2.command = false;
-                            team2.token.set(SM.directed, false);
-                            team2.token.set(SM.moveup,false);
-                            team2.token.set(Nations[team2.nation].flag,true);
-                            actTeams.push(team2)
-                        } else if (team2.Act() === "Unactivated") {
-                            team2.SetAct("Active");
-                            team2.command = false;
-                            team2.token.set(SM.directed, false);
-                            team2.token.set(SM.moveup,false);
-                            actTeams.push(team2)
-                        }
+        let actTeams = [];
+        //activate team(s)
+        let ids = platoonInfo.teamIDs;
+        _.each(ids,id2 => {
+            let team2 = Teams[id2];
+            if ((team2 && platoonAct === true) || (team2 && team2.id === actTeam.id)) {
+                let los = LOS(actTeam,team2);
+                if (los.los === true) {
+                    if (heroPointUsed && team2.token.get(Nations[team2.nation].flag) === false) {
+                        team2.SetAct("Active");
+                        team2.command = false;
+                        team2.token.set(SM.directed, false);
+                        team2.token.set(SM.moveup,false);
+                        team2.token.set(Nations[team2.nation].flag,true);
+                        actTeams.push(team2)
+                    } else if (team2.Act() === "Unactivated") {
+                        team2.SetAct("Active");
+                        team2.command = false;
+                        team2.token.set(SM.directed, false);
+                        team2.token.set(SM.moveup,false);
+                        actTeams.push(team2)
                     }
                 }
-            })
-        }
+            }
+        })
         actTeams = [...new Set(actTeams)];
 
         //run through each team, doing rally, RFP resolution on each
