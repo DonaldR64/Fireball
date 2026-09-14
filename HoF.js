@@ -983,7 +983,6 @@ log(weaponArray)
         }
 
         ResolveFire(startStatus) {
-            //let rfp = this.token.get("bar3_value").split("/").map(e => parseInt(e));
             let rfp = this.token.get(SM.RFP);
             if (rfp === true) {
                 rfp = 1
@@ -991,104 +990,65 @@ log(weaponArray)
                 rfp = parseInt(rfp);
             }
 
-            let result = {
-                finalStatus: "",
-                tip: "",
-            }
+            let category = this.token.get("bar1_value") === "Cover" ? "Cover":(this.type === "Vehicle" ? "Cover":"No Cover");
+            let displayCat = startStatus === "Suppressed" ? "Suppressed":category;
 
-            let finalStatus = this.Status();
-
-            let noun1 = startStatus === "Suppressed" ? "Suppressed":"No Cover";
-            let noun2 = startStatus === "Suppressed" ? "Suppressed":"Cover";
-            let qualityReroll = false;
-
-            if (this.type === "Vehicle") {
-                rfp[1] += rfp[0];
-                rfp[0] = 0;
-                noun2 = "Vehicle";
-                qualityReroll = true; //doesnt get
-            }
+            let currentStatus = this.Status();
+            let statusNumber = currentStatus === "Ready" ? 1: (currentStatus === "Suppressed") ? 2:3;
+            let qualityReroll = this.type === "Vehicle" ? true:false;
+            let suppressedReroll = this.type === "Vehicle" ? true:false;
             let rolls = [];
-            let tip = "";
+            let tip = "<br>" + displayCat;
+            let rollResults = {
+                Cover: [0,3,2,2,1,1,1],
+                "No Cover": [0,3,3,2,1,1,1],
+            } 
 
-//change below to only one routine, and vary based on
-//cover, no cover, suppressed state at beggining
-//pass back results as finalStatus and a tip that displays fire rolls etc
-
-
-
-            for (let i=0;i<rfp[0];i++) {
+            for (let i=0;i<rfp;i++) {
                 let roll = randomInteger(6);
                 rolls.push(roll);
                 if (this.quality === "Elite" && qualityReroll === false && roll === 1) {
                     roll = randomInteger(6);
                     rolls[rolls.length - 1] = roll + "r";
                     qualityReroll = true;
-                    tip += "<br>Elite Reroll";
+                    tip += "<br>Elite Rerolls first 1";
                 }
                 if (this.quality === "Poor" && qualityReroll === false && roll === 6) {
                     roll = randomInteger(6);
                     rolls[rolls.length - 1] = roll + "r";
                     qualityReroll = true;
-                    tip += "<br>Poor Reroll";
+                    tip += "<br>Poor Rerolls first 6";
                 }
-                if (startStatus === "Suppressed") {
-                    if (roll < 2) {finalStatus = "Killed"};
-                    if ((roll === 2 || roll === 3) && finalStatus !== "Killed") {finalStatus = "Suppressed"};
-                } else {
-                    if (roll < 3) {finalStatus = "Killed"};
-                    if (roll === 3 && finalStatus !== "Killed") {finalStatus = "Suppressed"};
-                }
-            }
-            if (rolls.length > 0) {
-                rolls.sort().reverse();
-                tip = "Rolls: " + rolls.toString() + tip;
-                if (startStatus === "Suppressed") {
-                    tip += "<br>Suppressed<br>Killed on 1<br>Otherwise Suppressed";
-                } else {
-                    tip += "<br>Killed on 1 or 2<br>Suppressed on 3";
-                }
-                let res = '[' + finalStatus + '](#" class="showtip" title="' + tip + ')';  
-            }
-            rolls = [];
-
-            let reroll = false;
-            tip = "";
-            for (let i=0;i<rfp[1];i++) {
-                let roll = randomInteger(6);
-                rolls.push(roll);
-                if (this.quality === "Elite" && qualityReroll === false && roll === 1) {
+                if (category === "Cover" && displayCat === "Suppressed" && roll === 1 && suppressedReroll === false) {
                     roll = randomInteger(6);
-                    rolls[rolls.length - 1] = roll + "r";
-                    qualityReroll = true;
-                    tip += "<br>Elite Reroll";
+                    rolls[rolls.length -1] = roll + "r";
+                    suppressedReroll = true;
+                    tip += "<br>Suppressed Rerolls first Kill"
                 }
-                if (this.quality === "Poor" && qualityReroll === false && roll === 6) {
-                    roll = randomInteger(6);
-                    rolls[rolls.length - 1] = roll + "r";
-                    qualityReroll = true;
-                    tip += "<br>Poor Reroll";
-                }
-                if (startStatus === "Suppressed" && this.type !== "Vehicle" && roll === 1 && reroll === false) {
-                    roll = randomInteger(6);
-                    rolls[roll.length - 1] = roll + "r";
-                    reroll = true;
-                    tip += "<br>Suppressed in Cover Reroll"
-                } 
-                if (roll < 2) {finalStatus = "Killed"};
-                if ((roll === 2 || roll === 3) && finalStatus !== "Killed") {finalStatus = "Suppressed"};
+                let cat = displayCat === "Suppressed" ? "Cover":category;
+                let rollResult = rollResults[cat][roll];
+                statusNumber = Math.max(statusNumber,rollResult);
             }
-            if (rolls.length > 0) {
-                rolls.sort();rolls.reverse();
-                tip = "Rolls: " + rolls.toString() + tip + "<br>Killed on 1<br>Suppressed on 2 or 3";
-                let res = '[' + finalStatus + '](#" class="showtip" title="' + tip + ')';  
-                outputCard.body.push("Fire (" + noun2 + "): " + res);
+            rolls.sort().reverse();
+            tip = "Rolls: " + rolls.toString() + tip;
+            if (category === "Cover" || displayCat === "Suppressed") {
+                tip += "<br>Killed on 1<br>Suppressed on 2 or 3";
+            } else {
+                tip += "<br>Killed on 1 or 2<br>Suppressed on 3";
             }
-
+            let statuses = ["","Ready","Suppressed","Killed"];
+            let finalStatus = statuses[statusNumber]
             this.SetStatus(finalStatus);
             this.token.set(SM.RFP,false);
-            return finalStatus;
+            this.token.set("bar1_value","");
+
+            let result = {
+                finalStatus: finalStatus,
+                tip: tip,
+            }
+            return result;
         }
+
 
         Name(rank) {
             let surname = SurnameList[this.nation][randomInteger(SurnameList[this.nation].length) - 1];
@@ -1108,7 +1068,7 @@ log(weaponArray)
             if (this.token.get(SM.RFP) !== false) {
                 let results = this.ResolveFire(startStatus);
                 let firedStatus = results.finalStatus;
-                let tip = '[' + this.name + '](#" class="showtip" title="' + tip + ')';  
+                let tip = '[' + this.name + '](#" class="showtip" title="' + results.tip + ')';  
                 if (firedStatus === "Ready") {
                     let extra = startStatus === "Suppressed" ? " Rallies and":"";
                     line = tip + extra + " Weathers the Enemy Fire";
@@ -1316,7 +1276,8 @@ log(weaponArray)
             outputCard.body.push(target.name + " can move an additional 3 Hexes to move up to the Leader");
         } else if (ability === "Rally") {
             let startStatus = target.Status();
-            let finalStatus = target.ResolveFire(startStatus);
+            let results = target.ResolveFire(startStatus);
+   ///fix me         
             if (finalStatus === "Suppressed") {
                 let rallyCheck = target.Check(0);
                 outputCard.body.push("Rally Check " + rallyCheck.tip);
@@ -2723,7 +2684,7 @@ log(result)
 
 
 
-
+/*
     const Order = (msg) => {
         let Tag = msg.content.split(";");
         let order = Tag[1];
@@ -2769,7 +2730,7 @@ log(result)
         }
 
     }
-
+*/
 
 
     const Move = (team) => {
