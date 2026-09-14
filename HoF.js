@@ -2484,6 +2484,7 @@ log(result)
                 showplayers_aura1: true,
                 showplayers_name: true,
                 statusmarkers: "",
+                bar1_value: "",
                 tint_color: "transparent",
                 disableSnapping: false,
                 disableTokenMenu: true,
