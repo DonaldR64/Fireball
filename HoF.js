@@ -983,8 +983,19 @@ log(weaponArray)
         }
 
         ResolveFire(startStatus) {
-            let rfp = this.token.get("bar3_value").split("/").map(e => parseInt(e));
-        
+            //let rfp = this.token.get("bar3_value").split("/").map(e => parseInt(e));
+            let rfp = this.token.get(SM.RFP);
+            if (rfp === true) {
+                rfp = 1
+            } else {
+                rfp = parseInt(rfp);
+            }
+
+            let result = {
+                finalStatus: "",
+                tip: "",
+            }
+
             let finalStatus = this.Status();
 
             let noun1 = startStatus === "Suppressed" ? "Suppressed":"No Cover";
@@ -999,6 +1010,12 @@ log(weaponArray)
             }
             let rolls = [];
             let tip = "";
+
+//change below to only one routine, and vary based on
+//cover, no cover, suppressed state at beggining
+//pass back results as finalStatus and a tip that displays fire rolls etc
+
+
 
             for (let i=0;i<rfp[0];i++) {
                 let roll = randomInteger(6);
@@ -1032,7 +1049,6 @@ log(weaponArray)
                     tip += "<br>Killed on 1 or 2<br>Suppressed on 3";
                 }
                 let res = '[' + finalStatus + '](#" class="showtip" title="' + tip + ')';  
-                outputCard.body.push("Fire (" + noun1 + "): " + res);
             }
             rolls = [];
 
@@ -1070,7 +1086,6 @@ log(weaponArray)
             }
 
             this.SetStatus(finalStatus);
-            this.token.set("bar3_value","0/0");
             this.token.set(SM.RFP,false);
             return finalStatus;
         }
@@ -1090,19 +1105,21 @@ log(weaponArray)
             let line;
             let startStatus = this.Status();
             let rallyStatus = this.Rally();
-            if (this.token.get(SM.RFP)) {
-                let firedStatus = this.ResolveFire(startStatus);
+            if (this.token.get(SM.RFP) !== false) {
+                let results = this.ResolveFire(startStatus);
+                let firedStatus = results.finalStatus;
+                let tip = '[' + this.name + '](#" class="showtip" title="' + tip + ')';  
                 if (firedStatus === "Ready") {
                     let extra = startStatus === "Suppressed" ? " Rallies and":"";
-                    line = this.name + extra + " Weathers the Enemy Fire";
+                    line = tip + extra + " Weathers the Enemy Fire";
                 } else if (firedStatus === "Suppressed") {
                     let extra = startStatus === "Suppressed" ? " remains ":" becomes";
-                    line = this.name + extra + " Suppressed";
+                    line = tip + extra + " Suppressed";
                 } else if (firedStatus === "Killed") {
                     if (this.type === "Vehicle") {
-                        line = this.name + " abandons the Vehicle";
+                        line = tip + " abandons the Vehicle";
                     } else {
-                        line = this.name + " routs or is incapacitated";
+                        line = tip + " routs or is incapacitated";
                     }
                     if (state.HoF.platoonInfo[this.platoonID].leaderID === this.id) {
                         state.HoF.platoonInfo[this.platoonID].leader = "Killed";
@@ -1138,11 +1155,10 @@ log(weaponArray)
                     aura2_color: "transparent",
                     showplayers_aura1: true,
                     showplayers_name: true,
-                    bar3_value: "0/0",
                     statusmarkers: "",
                     tint_color: "transparent",
                     disableSnapping: false,
-                    disableTokenMenu: false,
+                    disableTokenMenu: true,
                 })
                 leader.platoonID = this.platoonID;
                 leader.token.set("status_" + platoonInfo.marker,true);
@@ -1218,12 +1234,9 @@ log(weaponArray)
             }
             AddAbility(abilityName + extra,"!Activate;" + extra + ";?{Use Hero Point?|No|Yes}",team.charID);
 
-
-            AddAbility("Move","!Order;Move;@{selected|token_id}",team.charID);
-
             if (team.notes.includes("Leader") || team.notes.includes("Company Commander")) {
                 AddAbility("1: Rally Team","!Command;Rally;@{selected|token_id};@{target|token_id}",team.charID);
-                AddAbility("2: Direct Fire","!Command;Direct Fire;@{selected|token_id};@{target|token_id}",team.charID);
+                AddAbility("2: Direct Fire","!Command;Focus Fire;@{selected|token_id};@{target|token_id}",team.charID);
                 AddAbility("3: Move Up","!Command;Move Up;@{selected|token_id};@{target|token_id}",team.charID);
                 if (team.notes.includes("Company Commander")) {
                     AddAbility("4: Command Platoon Leader","!Command;Command Platoon Leader;@{selected|token_id};@{target|token_id}",team.charID);
@@ -2470,11 +2483,10 @@ log(result)
                 aura2_color: "transparent",
                 showplayers_aura1: true,
                 showplayers_name: true,
-                bar3_value: "0/0",
                 statusmarkers: "",
                 tint_color: "transparent",
                 disableSnapping: false,
-                disableTokenMenu: false,
+                disableTokenMenu: true,
             })
             team.name = name;
             team.platoonID = platoonID;
@@ -2726,7 +2738,7 @@ log(result)
         //Order Declared, now do rally and resolve RFP
         let startStatus = team.Status();
         let status = team.Rally();
-        let flag = team.token.get(SM.RFP);
+        let flag = team.token.get(SM.RFP) === false ? true:false;
         status = team.ResolveFire(startStatus);
         team.SetAct("Activated");
         if (status === "Killed") {
