@@ -1078,6 +1078,7 @@ log(weaponArray)
         Name(rank) {
             let surname = SurnameList[this.nation][randomInteger(SurnameList[this.nation].length) - 1];
             let firstName = FirstNameList[this.nation][randomInteger(FirstNameList[this.nation].length) - 1];
+            if (rank === "Sgt") {firstName = firstName.charAt(0) + "."}
             rank = Nations[this.nation][rank];
             let name = rank + " " + firstName + " " + surname;
             this.name = name;
@@ -1938,6 +1939,7 @@ log(weaponArray)
             players: {},
             nations: [],
             turn: 0,
+            companyNum: [randomInteger(5),randomInteger(5)],
             currentPlayer: 2,
             firstPlayer: 2,
             heroPoints: [0,0],
@@ -2423,10 +2425,13 @@ log(result)
         }
         state.HoF.platoonInfo[platoonID] = platoonInfo;
 
-        let num = 0;
+        let squadNum = 0;
+        let squadNames = [0,"1st Squad","2nd Squad","3rd Squad","4th Squad"];
+        let names = {};
+        let squadName;
+        let vehicleNum = 1;
         _.each(platoon,team => {
             let name;
-log(team.notes)
             if (team.notes.includes("Leader")) {
                 name = team.Name("Lt");
                 platoonInfo.leaderID = team.id;
@@ -2435,8 +2440,27 @@ log(team.notes)
                 platoonInfo.leaderID = team.id;
             } else {
                 name = team.charName.split(",")[0].trim();
-                num++;
-                name += " " + platoonLetter + "/" + num;
+                if (team.type === "Infantry Team") {
+                    if (names[name] && names[name] !== "Nil") {
+                        squadName = names[name];
+                        names[name] = "Nil";
+                        name = squadName + ", B Team";
+                    } else {
+                        squadNum += 1;
+                        squadName = squadNames[squadNum];
+                        names[name] = squadName
+                        name = squadName + ", A Team";
+                    }
+                } else if (team.type === "Vehicle") {
+                    if (vehicleNum === 1) {
+                        name = team.Name("Sgt");
+                        platoonInfo.leaderID = team.id;
+                    } else {
+                        name += " " + state.HoF.companyNum[team.player].toString() + platoonMarkerNum.toString() + vehicleNum.toString(); 
+                    }
+                    vehicleNum++;
+                }
+
             }
 
             team.token.set({
@@ -2628,8 +2652,20 @@ log(team.notes)
         }
 
         if (leaderKilled === true) {
-            outputCard.body.push("Any Teams in LOS are Activated, but only one Team can Move/Fire");
-            outputCard.body.push("[hr]");
+            if (platoonInfo.vehiclePlatoon) {
+                for (let i=0;i<platoonInfo.teamIDs.length;i++) {
+                    let team2 = Teams[platoonInfo.teamIDs[i]];
+                    if (team2 && team2.Status() !== "Killed") {
+                        platoonInfo.leader = true;
+                        platoonInfo.leaderID = team2.id;
+                        team2.Name("Sgt");
+                        break;
+                    }
+                }
+            } else {
+                outputCard.body.push("Any Teams in LOS are Activated, but only one Team can Move/Fire");
+                outputCard.body.push("[hr]");
+            }
         }
 
         if (singleTeamKilled === false) {
