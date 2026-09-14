@@ -2670,7 +2670,7 @@ log(trainingCheck)
                 line = "All Teams in LOS are Activated, but only one Team can Move/Fire";
             }
         } else if (singleTeamKilled === false) {
-            line = "All Teams in LOS are Activated";
+            outputCard.body.push("All Teams in LOS are Activated");
             outputCard.body.push("[hr]")
         }
 
