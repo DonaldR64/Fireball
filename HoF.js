@@ -1268,7 +1268,7 @@ log(weaponArray)
             return;
         }
 
-        if (ability === "Direct Fire") {
+        if (ability === "Focus Fire") {
             target.token.set(SM.directed,true);
             outputCard.body.push(target.name + " will add +1 to its ROF");
         } else if (ability === "Move Up") {
@@ -1276,8 +1276,12 @@ log(weaponArray)
             outputCard.body.push(target.name + " can move an additional 3 Hexes to move up to the Leader");
         } else if (ability === "Rally") {
             let startStatus = target.Status();
-            let results = target.ResolveFire(startStatus);
-   ///fix me         
+            let finalStatus = target.Status();
+            if (target.token.get(SM.RFP !== false)) {
+                let line = target.RR(startStatus);
+                outputCard.body.push(line);
+                finalStatus = target.Status();
+            }
             if (finalStatus === "Suppressed") {
                 let rallyCheck = target.Check(0);
                 outputCard.body.push("Rally Check " + rallyCheck.tip);
@@ -1286,7 +1290,7 @@ log(weaponArray)
                 } 
                 outputCard.body.push("If the Target Team moves, the Leader can move with it");
             } else if (finalStatus === "Killed") {
-                outputCard.body.push("The Target Team Routed and cannot be Rallied");
+                outputCard.body.push("The Target Team cannot be Rallied");
             }
         } else if (ability === "Command Platoon Leader") {
 
@@ -2560,7 +2564,7 @@ log(result)
                     } else {
                         platoonAct = true;
                         outputCard.body.push("[hr]");
-                        outputCard.body.push(leader.name + " has assumed Leadership of the Platoo n, rallying this Team");
+                        outputCard.body.push(leader.name + " has assumed Leadership of the Platoon, rallying this Team");
                         outputCard.body.push("He immediately activates this Team and any others in LOS");
                         outputCard.body.push("[hr]");
                     }
@@ -2614,7 +2618,7 @@ log(result)
                 if (actTeams.length === 1) {
                     singleTeamKilled = true;
                 } else if (team.id === platoonInfo.leaderID) {
-                    leaderKilled = true;
+                    leaderKilled = true;    
                 }
             }
         }
