@@ -2605,11 +2605,22 @@ log(result)
         actTeams = [...new Set(actTeams)];
 
         //run through each team, doing rally, RFP resolution on each
+        //also make note of types
+        let moveTypes = {infMove: false, gunMove: false, tracked: false, halftrack: false, wheeled: false};
         let fireOutput = [];
         let leaderKilled = false;
         let singleTeamKilled = false;
         for (let i=0;i<actTeams.length;i++) {
             let team = actTeams[i];
+            if (team.type.includes("Team")) {
+                moveTypes.infMove = true;
+            } else if (team.type === "Gun") {
+                moveTypes.gunMove = true;
+            } else if (team.type === "Vehicle") {
+                if (notes.includes("Tracked")) {moveTypes.tracked = true};
+                if (notes.includes("Half-Tracked")) {moveTypes.halftrack = true};
+                if (notes.includes("Wheeled")) {moveTypes.wheeled = true};
+            }
             if (team.id === actTeam.id && actTeamResolved) {continue};//already done
             let line = team.RR();
             if (line) {fireOutput.push(line)};
@@ -2629,26 +2640,37 @@ log(result)
             outputCard.body.push("[hr]");
         }
 
+        let line;
         if (leaderKilled === true) {
             if (platoonInfo.vehiclePlatoon) {
+                let newLeaderName;
+                let count = 0;
                 for (let i=0;i<platoonInfo.teamIDs.length;i++) {
                     let team2 = Teams[platoonInfo.teamIDs[i]];
                     if (team2 && team2.Status() !== "Killed") {
-                        platoonInfo.leader = true;
-                        platoonInfo.leaderID = team2.id;
-                        team2.Name("Sgt");
-                        break;
+                        count++;
+                        if (!newLeaderName) {
+                            platoonInfo.leader = true;
+                            platoonInfo.leaderID = team2.id;
+                            team2.Name("Sgt");
+                            newLeaderName = team2.name;
+                        }
                     }
                 }
+                line = "All Teams in LOS Are Activated";
+                if (newLeaderName && count > 1) {
+                    line += "<br>" + newLeaderName + " has taken command of the Platoon";
+                }
             } else {
-                outputCard.body.push("Any Teams in LOS are Activated, but only one Team can Move/Fire");
-                outputCard.body.push("[hr]");
+                line = "All Teams in LOS are Activated, but only one Team can Move/Fire";
             }
+        } else if (singleTeamKilled === false) {
+            line = "All Teams in LOS are Activated";
+            outputCard.body.push("[hr]")
         }
 
         if (singleTeamKilled === false) {
-            //info on movement
-            //MovementInfo(platoonInfo);
+            MovementInfo(moveTypes);
         }
 
         if (heroPointUsed === false) {
@@ -2666,166 +2688,67 @@ log(result)
             outputCard.body.push("Remaining: " + availableHP);
             PrintCard(playerID);
         }
-
-
-
-
-
-
-
-
-
-
     }
 
-    const PM = () => {
-        PlatoonMoves = {
-            infMove: [randomInteger(6),randomInteger(6)].sort(),
-            gunMove: [randomInteger(6)],
-            vehMove: [randomInteger(6),randomInteger(6),randomInteger(6)].sort(),
+    const MovementInfo = (moveTypes) => {
+        if (moveTypes.infMove) {
+            let roll1 = randomInteger(6);
+            let roll2 = randomInteger(6);
+            let move = roll1 + roll2;
+            let tip = "Rolls: " + roll1 + " + " + roll2;
+            tip += "<br>Ignore Difficult/Very Difficult";
+            tip += "<br>Out of LOS = 12 Hexes";
+            tip += "<br>Leader = 12 Hexes";
+            tip = '[' + move + "*" + '](#" class="showtip" title="' + tip + ')';
+            outputCard.body.push("Infantry move " + tip + " hexes");
+        }
+        if (moveTypes.gunMove) {
+            let roll1 = randomInteger(6);
+            let s = (roll1 === 1) ? "":es;
+            let tip = "Roll: " + roll1;
+            tip += "<br>Ignore Difficult";
+            tip += "<br>Cant Enter Very Difficult";
+            tip += "<br>Out of LOS = 6 Hexes";
+            tip = '[' + roll1 + "*" + '](#" class="showtip" title="' + tip + ')';
+            outputCard.body.push("Guns move " + tip + " hex" + s);
+        }
+        if (moveTypes.tracked || moveTypes.halftrack || moveTypes.wheeled) {
+            let roll1 = randomInteger(6);
+            let roll2 = randomInteger(6);
+            let roll3 = randomInteger(6);
+            let rolls = [roll1,roll2,roll3].sort();
+            let diffRolls = rolls.sort().slice(0,2);
+            let openMove = roll1 + roll2 + roll3;
+            let diffMove = diffRolls[0] + diffRolls[1];
+
+            let tip = "<br>Entirely on Road Adds 6 Hexes for Tracked/Half-Tracked and 12 Hexes for Wheeled<br>Vehicles can only Turn in first 6 Hexes unless following Road<br>Reversing costs 2 Hexes/1 Hex of Movement";
+
+            let tip1 = "Rolls: " + rolls.toString() + "<br>Out of LOS = 18 Hexes" + tip
+            let tip2 = "Rolls: " + diffRolls.toString() + "<br>Out of LOS = 12 Hexes" + tip
+
+            tip1 = '[' + openMove + "*" + '](#" class="showtip" title="' + tip1 + ')';
+            tip2 = '[' + diffMove + "*" + '](#" class="showtip" title="' + tip2 + ')';
+            outputCard.body.push("Vehicles in the Open move " + tip1 + " hexes");
+            outputCard.body.push("Vehicles in Difficult/Very Difficult Ground Move " + tip2 + " hexes");
+
+            if (moveTypes.tracked) {
+                outputCard.body.push("Very Difficult Ground Requires a Terrain Check for Tracked Vehicles");
+            }
+            if (moveTypes.halftrack) {
+                outputCard.body.push("Half-Tracked Vehicles may not enter Very Difficult Ground");
+            }
+            if (moveTypes.wheeled) {
+                outputCard.body.push("Difficult Ground Requires a Terrain Check for Wheeled Vehicles");
+                outputCard.body.push("Wheeled Vehicles may not enter Very Difficult Ground");
+            }
         }
     }
 
 
 
-/*
-    const Order = (msg) => {
-        let Tag = msg.content.split(";");
-        let order = Tag[1];
-        let team = Teams[Tag[2]];
-        let target = Tag[3] || ""; //if fire, otherwise blank
-
-        SetupCard(team.name,order,team.nation);
-        if (team.Act() !== "Active") {
-            outputCard.body.push("Team is not Active");
-            PrintCard();
-            return;
-        }
-        //Order Declared, now do rally and resolve RFP
-        let startStatus = team.Status();
-        let status = team.Rally();
-        let flag = team.token.get(SM.RFP) === false ? true:false;
-        status = team.ResolveFire(startStatus);
-        team.SetAct("Activated");
-        if (status === "Killed") {
-            PrintCard();
-        } else {
-            if (order === "Move") {
-                if (flag) {PrintCard()};
-                Move(team);
-            } else if (order === "Fire") {
-                if (status === "Suppressed") {
-                    outputCard.body.push("Suppressed Units Cannot Fire");
-                    PrintCard();
-                } else {
-                    if (flag) {PrintCard()};
-                    Fire(team,target);
-                }
-            }
-        }
-
-        if (state.HoF.platoonInfo[team.platoonID].leader === "Killed") {
-            _.each(Teams,team => {
-                if (team.Act() === "Active") {
-                    team.SetAct("Activated");
-                }
-            })
-            state.HoF.platoonInfo[team.platoonID].leader = false;
-        }
-
-    }
-*/
-
-
-    const Move = (team) => {
-        SetupCard(team.name,"",team.nation);
-        let subtitle;
-        let hex = HexMap[team.hexLabel];
-        if ( Object.keys(PlatoonMoves).length === 0) {
-            PM();
-        }
-
-        if (team.type.includes("Team")) {
-            let move = 0;
-            _.each(PlatoonMoves.infMove,roll => {
-                move += roll;
-            })
-            subtitle = "Rolls: " + PlatoonMoves.infMove.toString();
-            subtitle += "<br>No LOS = 12 Hexes";
-            subtitle = '[Movement](#" class="showtip" title="' + subtitle + ')';   
-            if (team.notes.includes("Leader")) {
-                move = 12;
-                subtitle = "Leader: 12 Hexes";
-            }
-            outputCard.body.push("Movement: [#ff0000]" + move + "+[/#] Hexes");
-            outputCard.body.push("The Team is Unaffected by Difficult or Very Difficult Ground");
-        } else if (team.type.includes("Gun")) {
-            let move = PlatoonMoves.gunMove[0];
-            let s = move === 1 ? "":"es"
-            subtitle = "Roll: " + move;
-            subtitle += "<br>No LOS = 6 Hexes";
-
-            subtitle = '[Movement](#" class="showtip" title="' + subtitle + ')';   
-            outputCard.body.push("Movement: [#ff0000]" + move + "+[/#] Hex" + s);
-            outputCard.body.push("The Team is  Unaffected by Difficult Ground");
-            outputCard.body.push("The Team is unable to enter Very Difficult Ground");
-            outputCard.body.push("The Team may not move adjacent to enemy Teams");
-        } else if (team.type.includes("Vehicle")) {
-            let maxMove = 0;
-            for (let i=0;i<3;i++) {
-                maxMove += PlatoonMoves.vehMove[i];
-            }
-            let s = maxMove === 1 ? "":"es"
-            let diffMove = maxMove - PlatoonMoves.vehMove[2]; //drop highest;
-            let s2 = diffMove === 1 ? "":"es"
-            subtitle = "Rolls: " + PlatoonMoves.vehMove.toString();
-            subtitle += "<br>No LOS = 18 or 12 Hexes";
-            subtitle = '[Movement](#" class="showtip" title="' + subtitle + ')';   
-
-            if (team.notes.includes("Tracked") || team.notes.includes("Half-Tracked")) {
-                if (hex.type.includes("Open")) {
-                    outputCard.body.push("Movement: [#ff0000]" + maxMove + "+[/#] Hex" + s);
-                }
-                if (team.notes.includes("Tracked")) {
-                    outputCard.body.push("Difficult or Very Difficult Ground: [#ff0000]" + diffMove + "+[/#] Hex" + s2);
-                    outputCard.body.push("Very Difficult Ground Requires a Terrain Check");
-                } else if (team.notes.includes("Half-Tracked")) {
-                    outputCard.body.push("Difficult Ground: [#ff0000]" + diffMove + "+[/#] Hex" + s2);
-                    outputCard.body.push("Very Difficult Ground may not be entered");
-                }
-                if (hex.type.includes("Road")) {
-                    outputCard.body.push("Movement entirely on a Road adds 6 Hexes");
-                }
-            }
-            if (team.notes.includes("Wheeled")) {
-                if (hex.type.includes("Open")) {
-                    outputCard.body.push("Movement: [#ff0000]" + maxMove + "+[/#] Hex" + s);
-                }
-                outputCard.body.push("Difficult Ground: [#ff0000]" + diffMove + "+[/#] Hex" + s2);
-                outputCard.body.push("Difficult Ground also requires a Terrain Check");
-                outputCard.body.push("Very Difficult Ground may not be entered");
-                if (hex.type.includes("Road")) {
-                    outputCard.body.push("Movement entirely on a Road adds 12 Hexes");
-                }
-            }
-            outputCard.body.push("Unless following a road, Vehicles can only Turn in the first 6 Hexes of movement");
-            outputCard.body.push("Reversing coses 2 Hexes/1 Hex of movement");
 
 
 
-
-        }
-
-        outputCard.subtitle = subtitle;
-
-        if (team.token.get(SM.moveup)) {
-            outputCard.body.push("[hr]");
-            outputCard.body.push("The Team may Move Up an additional 3 Hexes")
-            team.token.set(SM.moveup,false);
-        }
-
-        PrintCard();
-    }
 
     const Fire = (team,target) => {
         SetupCard(team.name,"Fire",team.nation);
@@ -2927,9 +2850,6 @@ log(result)
                 break;
             case '!Activate':
                 Activate(msg);
-                break;
-            case '!Order':
-                Order(msg);
                 break;
             case '!Command':
                 Command(msg);
