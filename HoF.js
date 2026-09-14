@@ -1094,7 +1094,8 @@ log(weaponArray)
         NewLeader() {
             //place a leader token on spot, name it etc
             let cID = Nations[this.nation]["PL Character ID"]
-            let token = summonToken(cID,HexMap[this.hexLabel].centre,{w: 70,h: 70},0,"objects");
+            let token = summonToken(cID,HexMap[this.hexLabel].centre,{w: 50,h: 50},0,"objects");
+            PlaySound("Trumpet");
             if (token) {
                 outputCard.body.push("[hr]");
                 let leader = new Team(token.id);
@@ -1108,7 +1109,7 @@ log(weaponArray)
                 platoonInfo.leaderID = leader.id;                    
                 platoonInfo.teamIDs = teamIDs;
                 state.HoF.platoonInfo[this.platoonID] = platoonInfo;
-                state.HoF.platoonIDs[leader.id] = actTeam.platoonID;
+                state.HoF.platoonIDs[leader.id] = this.platoonID;
                 leader.token.set({
                     aura1_color: "#ffffff",
                     aura1_radius: 5,
@@ -2526,7 +2527,8 @@ log(result)
 
         let platoonInfo = state.HoF.platoonInfo[actTeam.platoonID];
 
-        SetupCard(platoonInfo.name,"Activate",actTeam.nation);
+        let title = (platoonAct) ? platoonInfo.name:actTeam.name;
+        SetupCard(title,"Activate",actTeam.nation);
 
         //check re Vehicle if can act as a leader
         if (platoonInfo.vehiclePlatoon === true) {
@@ -2550,12 +2552,15 @@ log(result)
         //check if missing a PL, will be a single team activating initially if yes
         //need a flag to prevent doing RR twice
         let actTeamResolved = false;
-        if (platoonInfo.vehiclePlatoon === false && platoonInfo.leader === "Killed") {
+log(platoonInfo)
+        if (platoonInfo.vehiclePlatoon === false && platoonInfo.leader === false) {
+
             let line = actTeam.RR();
             actTeamResolved = true;
             let actStatus = actTeam.Status();
             if (actStatus !== "Killed") {
                 let trainingCheck = actTeam.Check(0)
+log(trainingCheck)
                 if (trainingCheck.result === true) {
                     actTeam.SetStatus("Ready");
                     let leader = actTeam.NewLeader();
@@ -2564,14 +2569,16 @@ log(result)
                     } else {
                         platoonAct = true;
                         outputCard.body.push("[hr]");
-                        outputCard.body.push(leader.name + " has assumed Leadership of the Platoon, rallying this Team");
+                        let extra;
+                        if (actStatus === "Suppressed") {extra = ", rallying this team"}
+                        outputCard.body.push(leader.name + " has assumed Leadership of the Platoon"  + extra);
                         outputCard.body.push("He immediately activates this Team and any others in LOS");
                         outputCard.body.push("[hr]");
                     }
-                } else if (line) {
+                }
+            } else if (line) {
                     outputCard.body.push(line);
                     outputCard.body.push("[hr]");
-                }
             }
         }
 
@@ -2617,9 +2624,9 @@ log(result)
             } else if (team.type === "Gun") {
                 moveTypes.gunMove = true;
             } else if (team.type === "Vehicle") {
-                if (notes.includes("Tracked")) {moveTypes.tracked = true};
-                if (notes.includes("Half-Tracked")) {moveTypes.halftrack = true};
-                if (notes.includes("Wheeled")) {moveTypes.wheeled = true};
+                if (team.notes.includes("Tracked")) {moveTypes.tracked = true};
+                if (team.notes.includes("Half-Tracked")) {moveTypes.halftrack = true};
+                if (team.notes.includes("Wheeled")) {moveTypes.wheeled = true};
             }
             if (team.id === actTeam.id && actTeamResolved) {continue};//already done
             let line = team.RR();
@@ -2699,18 +2706,18 @@ log(result)
             tip += "<br>Ignore Difficult/Very Difficult";
             tip += "<br>Out of LOS = 12 Hexes";
             tip += "<br>Leader = 12 Hexes";
-            tip = '[' + move + "*" + '](#" class="showtip" title="' + tip + ')';
-            outputCard.body.push("Infantry move " + tip + " hexes");
+            tip = '[' + move + '](#" class="showtip" title="' + tip + ')';
+            outputCard.body.push("Infantry move " + tip + "+ hexes");
         }
         if (moveTypes.gunMove) {
             let roll1 = randomInteger(6);
-            let s = (roll1 === 1) ? "":es;
+            let s = (roll1 === 1) ? "":"es";
             let tip = "Roll: " + roll1;
             tip += "<br>Ignore Difficult";
             tip += "<br>Cant Enter Very Difficult";
             tip += "<br>Out of LOS = 6 Hexes";
-            tip = '[' + roll1 + "*" + '](#" class="showtip" title="' + tip + ')';
-            outputCard.body.push("Guns move " + tip + " hex" + s);
+            tip = '[' + roll1 + '](#" class="showtip" title="' + tip + ')';
+            outputCard.body.push("Guns move " + tip + "+ hex" + s);
         }
         if (moveTypes.tracked || moveTypes.halftrack || moveTypes.wheeled) {
             let roll1 = randomInteger(6);
@@ -2726,10 +2733,10 @@ log(result)
             let tip1 = "Rolls: " + rolls.toString() + "<br>Out of LOS = 18 Hexes" + tip
             let tip2 = "Rolls: " + diffRolls.toString() + "<br>Out of LOS = 12 Hexes" + tip
 
-            tip1 = '[' + openMove + "*" + '](#" class="showtip" title="' + tip1 + ')';
-            tip2 = '[' + diffMove + "*" + '](#" class="showtip" title="' + tip2 + ')';
-            outputCard.body.push("Vehicles in the Open move " + tip1 + " hexes");
-            outputCard.body.push("Vehicles in Difficult/Very Difficult Ground Move " + tip2 + " hexes");
+            tip1 = '[' + openMove + '](#" class="showtip" title="' + tip1 + ')';
+            tip2 = '[' + diffMove + '](#" class="showtip" title="' + tip2 + ')';
+            outputCard.body.push("Vehicles in the Open move " + tip1 + "+ hexes");
+            outputCard.body.push("Vehicles in Difficult/Very Difficult Ground Move " + tip2 + "+ hexes");
 
             if (moveTypes.tracked) {
                 outputCard.body.push("Very Difficult Ground Requires a Terrain Check for Tracked Vehicles");
