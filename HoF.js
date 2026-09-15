@@ -2960,10 +2960,17 @@ log(shooterMsgs)
             }
         }
 
+        //small teams at end, target team if not small team at beginning
+        //sorted on distance to shooter otherwise
         targets.sort((a,b) => {
             if (a.type === "Small Team") {return 1};
             if (b.type === "Small Team") {return -1};
+            if (a.id !== target.id && b.id !== target.id) {
+                return team1.Distance(a) - team1.Distance(b);
+            }
         })
+        
+
 
 log("Targets")
 _.each(targets,target => {
