@@ -807,6 +807,8 @@ const Main = (() => {
             this.notes = aa.notes || " ";
             this.command = false;
 
+
+            this.hits = 0;
             this.squadMate = token.get("gmnotes").toString() || "";
 
             let weaponArray = [];
@@ -823,11 +825,18 @@ const Main = (() => {
                 let wrof = parseInt(aa[pre + "rof"]);
                 let wat = parseInt(aa[pre + "at"]) || "-";
                 let wnotes = aa[pre + "notes"] || " ";
+                let wfp = 1;
+                if (wnotes.includes("FP")) {
+                    let bit = wnotes.split(",").map(e => e.includes("FP"));
+                    wfp = parseInt(bit.replace(/[^\d]/g,""));
+                }
+
                 let weapon = {
                     name: wname,
                     range: wrange, //an array of min/max
                     rof: wrof, //an array of dice
                     at: wat,
+                    fp: wfp,
                     notes: wnotes,
                 }
                 weaponArray.push(weapon);
@@ -1212,7 +1221,7 @@ log(phi)
 
             if (team.notes.includes("Leader") || team.notes.includes("Company Commander")) {
                 AddAbility("1: Rally Team","!Command;Rally;@{selected|token_id};@{target|token_id}",team.charID);
-                AddAbility("2: Direct Fire","!Command;Focus Fire;@{selected|token_id};@{target|token_id}",team.charID);
+                AddAbility("2: Focus Fire","!Command;Focus Fire;@{selected|token_id};@{target|token_id}",team.charID);
                 AddAbility("3: Move Up","!Command;Move Up;@{selected|token_id};@{target|token_id}",team.charID);
                 if (team.notes.includes("Company Commander")) {
                     AddAbility("4: Command Platoon Leader","!Command;Command Platoon Leader;@{selected|token_id};@{target|token_id}",team.charID);
@@ -1259,7 +1268,7 @@ log(phi)
         if (leader.Status() === "Suppressed") {
             errorMsgs.push("Leader is Suppressed");
         }
-        if ((ability === "Rally Team" || ability === "Direct Fire") && losResult.distance > 1) {
+        if ((ability === "Rally Team" || ability === "Focus Fire") && losResult.distance > 1) {
             errorMsgs.push(ability + " Target must be adjacent");
         }
         if (ability === "Rally Team" && target.Status !== "Suppressed") {
@@ -2517,6 +2526,7 @@ log(result)
         //and make any shown as active inactive
         let lastUnitFlag = false;
         _.each(Teams,team2 => {
+            team2.hits = 0;
             if (team2.Act() === "Active") {
                 team2.SetAct("Activated");
                 if (team2.Status() === "Suppressed") {
@@ -2930,27 +2940,48 @@ log(shooterMsgs)
         outputCard.body.push("[hr]");
 
         //build array of possible targets
+
         let targets = [target];
         let keys = Object.keys(Teams);
         for (let i=0;i<keys.length;i++) {
             let team2 = Teams[keys[i]];
+            if (!team2) {continue};
             if (team2.id === target.id || team2.nation !== target.nation) {
                 continue;
             }
-            let dist = target.distance(team2);
+            let dist = target.Distance(team2);
             if (dist > 4) {continue};
-
-
-
-
+            for (let i=0;i<shooters.length;i++) {
+                let los = LOS(shooters[i].team,team2);
+                if (los.los === true) {
+                    targets.push(team2);
+                    break;
+                };
+            }
         }
 
+        targets.sort((a,b) => {
+            if (a.type === "Small Team") {return 1};
+            if (b.type === "Small Team") {return -1};
+        })
+
+log("Targets")
+_.each(targets,target => {
+    log(target.name);
+})
 
 
+/*
+//clear hits on new activation
 
-        //distribute hits
+        //allocate 1 hit to each target 
+        //distribute hits - small arms only to unarmoured
+        //Non-Vehicle Teams may not be allocated more than 1 hit per activation - so if their .hit is already 1, skip them
+        //Small Teams,including Leaders, are allocated hits only after all other valid Teams.
+        
 
 
+*/
 
 
 
