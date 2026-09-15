@@ -856,7 +856,20 @@ log(weaponArray)
         }
 
         Facing(b) {
-
+            let result = {
+                forwardArc: false,
+                frontFacing: false,
+            }
+            let phi = Angle(HexMap[this.hexLabel].cube.angle(HexMap[b.hexLabel].cube));
+            phi = Angle(phi - this.token.get("rotation"));
+log(phi)
+            if (phi >= 315 || phi <= 45) {
+                result.forwardArc = true;
+            } 
+            if (phi >= 270 || phi <= 90) {
+                result.frontFacing = true;
+            }
+            return result;
         }
 
 
@@ -1208,7 +1221,11 @@ log(weaponArray)
 
 
             } else {
-                AddAbility("Fire","!Order;Fire;@{selected|token_id};@{target|token_id}",team.charID);
+                let abilityName = "1: " + team.weaponArray[0].name;
+                AddAbility(abilityName,"!DirectFire;@{selected|token_id};@{target|token_id}",team.charID);
+//indirect
+
+
             }
 
 
@@ -2147,7 +2164,14 @@ log(state.HoF)
                 outputCard.body.push("Target is Concealed");
             }
         }
-
+        if (shooter.type.includes("Team") === false) {
+            let verb = (losResult.forwardArc) ? " is ": " is NOT ";
+            outputCard.body.push("The Target " + verb + " in the Forward Arc");
+        }
+        if (target.type === "Vehicle") {
+            let noun = (losResult.frontFacing) ? " Front ":" Rear ";
+            outputCard.body.push("Any Fire would hit the target in the " + noun + " Facing");
+        }
 
         PrintCard();
     }
@@ -2329,8 +2353,8 @@ log(state.HoF)
             interConceal: interConcealFinal,
             cover: cover,
             conceal: conceal,
-            //shooterArcs: shooter.Arcs(target),
-            //targetArcs: target.Arcs(shooter),
+            forwardArc: shooter.Facing(target).forwardArc,
+            frontFacing: target.Facing(shooter).frontFacing,
         }
 log(result)
         return result;
@@ -2755,8 +2779,75 @@ log(trainingCheck)
 
 
 
-    const Fire = (team,target) => {
-        SetupCard(team.name,"Fire",team.nation);
+    const DirectFire = (msg) => {
+        let Tag = msg.content.split(";");
+        let shooter = Teams[Tag[1]];
+        let target = Teams[Tag[2]];
+
+        SetupCard(shooter.name,"Direct Fire",shooter.nation);
+
+        let losResult = LOS(shooter,target);
+        
+        let errorMsgs = [];
+        if (shooter.Act() !== "Active") {
+            errorMsgs.push(shooter.name + " is not Active");
+        }
+        if (shooter.Status() === "Suppressed") {
+            errorMsgs.push(shooter.name + " is Suppressed");
+        }
+        let weapons = [];
+        let nonWeapons = [];
+        for (let i=0;i<shooter.weaponArray.length;i++) {
+            let weapon = shooter.weaponArray[i];
+            if (losResult.distance < weapon.range[0]) {
+                nonWeapons.push(weapon.name + " - less than Minimum Range");
+                continue;
+            }
+            if (losResult.distance > (weapon.range[1] * 2)) {
+                nonWeapons.push(weapon.name + " - beyond twice Eff Range");
+                continue;
+            }
+            if (((shooter.type === "Vehicle" && weapon.notes.includes("Hull")) || shooter.type === "Gun") && losResult.forwardArc === false){
+                nonWeapons.push(weapon.name + " - target is not in Forward Arc");
+                continue;
+            }
+            weapons.push(weapon);
+        }
+
+        if (nonWeapons.length > 0) {
+            nonWeapons = nonWeapons.toString().replaceAll(",","<br>");
+        }
+        if (weapons.length === 0) {
+            errorMsgs.push(nonWeapons);
+        }
+
+        if (ErrorMsg(errorMsgs)) {
+            PrintCard();
+            return;
+        }
+
+
+        //roll hits first
+        let hits = 0;
+        _.each(weapons,weapon => {
+            
+
+
+
+        })
+        //distribute hits
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         PrintCard();
@@ -2859,6 +2950,10 @@ log(trainingCheck)
             case '!Command':
                 Command(msg);
                 break;
+            case '!DirectFire':
+                DirectFire(msg);
+                break;
+
 
         }
     };
