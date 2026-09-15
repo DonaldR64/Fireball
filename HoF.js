@@ -808,7 +808,7 @@ const Main = (() => {
             this.command = false;
 
             let weaponArray = [];
-            for (let w=1;w<3;w++) {
+            for (let w=1;w<4;w++) {
                 let pre = "weapon" + w;
                 let wequipped = aa[pre + "equipped"];
                 if (wequipped !== "Equipped") {continue};
@@ -2807,7 +2807,7 @@ log(trainingCheck)
                 nonWeapons.push(weapon.name + " - beyond twice Eff Range");
                 continue;
             }
-            if (((shooter.type === "Vehicle" && weapon.notes.includes("Hull")) || shooter.type === "Gun") && losResult.forwardArc === false){
+            if (losResult.forwardArc === false && ((shooter.type === "Vehicle" && weapon.notes.includes("Hull")) || shooter.type === "Gun")){
                 nonWeapons.push(weapon.name + " - target is not in Forward Arc");
                 continue;
             }
@@ -2816,6 +2816,7 @@ log(trainingCheck)
 
         if (nonWeapons.length > 0) {
             nonWeapons = nonWeapons.toString().replaceAll(",","<br>");
+log(nonWeapons)
         }
         if (weapons.length === 0) {
             errorMsgs.push(nonWeapons);
@@ -2828,13 +2829,47 @@ log(trainingCheck)
 
 
         //roll hits first
-        let hits = 0;
+        let hits = [];
+
+//? AT
+
         _.each(weapons,weapon => {
-            
-
-
-
+            let wtip = "";
+            let wrolls = [];
+            let target = 4;
+            let whits = 0;
+            if (target.type !== "Vehicle") {
+                if (weapon.at !== "-") {
+                    wtip += "<br>HE Round";
+                } else if (losResult.conceal || losResult.interConceal) {
+                    wtip += "<br>Concealment +1";
+                    target++;                
+                }
+            }
+            if (losResult.distance > weapon.range[1]) {
+                wtip  += "<br>Long Range +1";
+                target++;
+            }
+            for (let i=0;i<weapon.rof;i++) {
+                let roll = randomInteger(6);
+                wrolls.push(roll);
+                if (roll >= target) {
+                    hits.push(weapon)
+                    whits++;
+                }
+            }
+            wrolls.sort().reverse().toString();
+            let tip = "Rolls: " + wrolls + " vs. " + target + "+" + wtip;
+            let s = (whits === 1) ? "":"s";
+            if (whits > 0) {
+                tip = '[' + whits + '](#" class="showtip" title="' + tip + ')';   
+            } else {
+                tip = '[No](#" class="showtip" title="' + tip + ')';   
+            }
+            outputCard.body.push(weapon.name + ": " + tip + " Hit" + s);
         })
+
+        outputCard.body.push("[hr]");
         //distribute hits
 
 
