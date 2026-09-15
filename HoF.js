@@ -807,6 +807,8 @@ const Main = (() => {
             this.notes = aa.notes || " ";
             this.command = false;
 
+            this.squadMate = token.get("gmnotes").toString() || "";
+
             let weaponArray = [];
             for (let w=1;w<4;w++) {
                 let pre = "weapon" + w;
@@ -1222,7 +1224,7 @@ log(phi)
 
             } else {
                 let abilityName = "1: " + team.weaponArray[0].name;
-                AddAbility(abilityName,"!DirectFire;@{selected|token_id};@{target|token_id}",team.charID);
+                AddAbility(abilityName,"!Fire;@{selected|token_id};@{target|token_id};Direct",team.charID);
 //indirect
 
 
@@ -2433,6 +2435,7 @@ log(result)
         let names = {};
         let squadName;
         let vehicleNum = 1;
+        let squadMate;
         _.each(platoon,team => {
             let name;
             if (team.notes.includes("Leader")) {
@@ -2448,12 +2451,18 @@ log(result)
                         squadName = names[name];
                         names[name] = "Nil";
                         name = squadName + ", B Team";
+                        team.squadMate = squadMate;
+                        Teams[squadMate].squadMate = team.id;
+                        Teams[squadMate].token.set("gmnotes",team.id);
                     } else {
                         squadNum += 1;
                         squadName = squadNames[squadNum];
                         names[name] = squadName
                         name = squadName + ", A Team";
+                        squadMate = team.id;
+                        team.squadMate = "";
                     }
+                    
                 } else if (team.type === "Vehicle") {
                     if (vehicleNum === 1) {
                         name = team.Name("Sgt");
@@ -2478,6 +2487,7 @@ log(result)
                 tint_color: "transparent",
                 disableSnapping: false,
                 disableTokenMenu: true,
+                gmnotes: team.squadMate,
             })
             team.name = name;
             team.platoonID = platoonID;
@@ -2607,13 +2617,21 @@ log(trainingCheck)
         }
 
         let actTeams = [];
+        let squadMateID;
+        if (actTeam.squadMate) {
+            let team2 = Teams[actTeam.squadMate];
+            if (team2) {
+                squadMateID = team2.id;
+            }
+        }
+
         //activate team(s)
         let ids = platoonInfo.teamIDs;
         _.each(ids,id2 => {
             let team2 = Teams[id2];
-            if ((team2 && platoonAct === true) || (team2 && team2.id === actTeam.id)) {
+            if ((team2 && platoonAct === true) || (team2 && team2.id === actTeam.id) || (team2 && team2.id === squadMateID)) {
                 let los = LOS(actTeam,team2);
-                if (los.los === true) {
+                if (los.los === true || team2.id === squadMateID) {
                     if (heroPointUsed && team2.token.get(Nations[team2.nation].flag) === false) {
                         team2.SetAct("Active");
                         team2.command = false;
@@ -2694,7 +2712,13 @@ log(trainingCheck)
                 line = "All Teams in LOS are Activated, but only one Team can Move/Fire";
             }
         } else if (singleTeamKilled === false) {
-            outputCard.body.push("All Teams in LOS are Activated");
+            if (platoonAct) {
+                outputCard.body.push("All Teams in LOS are Activated");
+            } else if (squadMateID) {
+                outputCard.body.push("All Teams in the Squad are Activated");
+            } else {
+                outputCard.body.push("The Team is Activated");
+            }
             outputCard.body.push("[hr]")
         }
 
@@ -2776,102 +2800,155 @@ log(trainingCheck)
 
 
 
-
-
-
-    const DirectFire = (msg) => {
+    const Fire = (msg) => {
         let Tag = msg.content.split(";");
-        let shooter = Teams[Tag[1]];
+        let team1 = Teams[Tag[1]];
+        let teams = [team1];
         let target = Teams[Tag[2]];
+        let type = Tag[3];
+        let indirect = type === "Indirect" ? true:false;
 
-        SetupCard(shooter.name,"Direct Fire",shooter.nation);
+        let shooterName = team1.name;
+        if (team1.squadMate) {
+            let team2 = Teams[team1.squadMate];
+            if (team2) {
+                teams.push(team2);
+                shooterName = team1.name.split(",")[0];
+            }
+        }
 
-        let losResult = LOS(shooter,target);
-        
-        let errorMsgs = [];
-        if (shooter.Act() !== "Active") {
-            errorMsgs.push(shooter.name + " is not Active");
-        }
-        if (shooter.Status() === "Suppressed") {
-            errorMsgs.push(shooter.name + " is Suppressed");
-        }
-        let weapons = [];
-        let nonWeapons = [];
-        for (let i=0;i<shooter.weaponArray.length;i++) {
-            let weapon = shooter.weaponArray[i];
-            if (losResult.distance < weapon.range[0]) {
-                nonWeapons.push(weapon.name + " - less than Minimum Range");
+        SetupCard(shooterName,type + " Fire",team1.nation);
+        let shooterMsgs = [];
+        let shooters = [];
+log("Teams: " + teams.length)
+        for (let i=0;i<teams.length;i++) {
+            let shooter = teams[i];
+            let losResult = LOS(shooter,target);
+            if (losResult.los === false) {
+                shooterMsgs.push(shooter.name + " has no LOS");
+                continue;
+            };
+            if (shooter.Act() !== "Active") {
+                shooterMsgs.push(shooter.name + " is not Active");
                 continue;
             }
-            if (losResult.distance > (weapon.range[1] * 2)) {
-                nonWeapons.push(weapon.name + " - beyond twice Eff Range");
+            if (shooter.Status() === "Suppressed") {
+                shooterMsgs.push(shooter.name + " is Suppressed");
                 continue;
             }
-            if (losResult.forwardArc === false && ((shooter.type === "Vehicle" && weapon.notes.includes("Hull")) || shooter.type === "Gun")){
-                nonWeapons.push(weapon.name + " - target is not in Forward Arc");
+            let nonWeapons = [];
+            let weapons = [];
+            for (let i=0;i<shooter.weaponArray.length;i++) {
+                let weapon = shooter.weaponArray[i];
+                if (losResult.distance < weapon.range[0]) {
+                    nonWeapons.push(weapon.name + " - less than Minimum Range");
+                    continue;
+                }
+                if (losResult.distance > (weapon.range[1] * 2)) {
+                    nonWeapons.push(weapon.name + " - beyond twice Eff Range");
+                    continue;
+                }
+                if (losResult.forwardArc === false && ((shooter.type === "Vehicle" && weapon.notes.includes("Hull")) || shooter.type === "Gun")){
+                    nonWeapons.push(weapon.name + " - target is not in Forward Arc");
+                    continue;
+                }
+                weapons.push(weapon);
+            }
+            if (weapons.length === 0) {
+                _.each(nonWeapons,nonWeapon => {
+                    shooterMsgs.push(nonWeapon);
+                })
                 continue;
             }
-            weapons.push(weapon);
+            let info = {
+                team: shooter,
+                weapons: weapons,
+                losResult: losResult,
+            }
+            shooters.push(info);
         }
-
-        if (nonWeapons.length > 0) {
-            nonWeapons = nonWeapons.toString().replaceAll(",","<br>");
-log(nonWeapons)
-        }
-        if (weapons.length === 0) {
-            errorMsgs.push(nonWeapons);
-        }
-
-        if (ErrorMsg(errorMsgs)) {
+log("Shooters Array")
+log(shooters)
+log(shooterMsgs)
+        if (shooters.length === 0) {
+            ErrorMsg(shooterMsgs);
             PrintCard();
             return;
         }
+        //all shooters fire, add up hits
+        let hits = []; //an array of weapon hits, keeps ability to apply at etc in next part
 
-
-        //roll hits first
-        let hits = [];
-
-//? AT
-
-        _.each(weapons,weapon => {
-            let wtip = "";
-            let wrolls = [];
-            let target = 4;
-            let whits = 0;
-            if (target.type !== "Vehicle") {
-                if (weapon.at !== "-") {
-                    wtip += "<br>HE Round";
-                } else if (losResult.conceal || losResult.interConceal) {
-                    wtip += "<br>Concealment +1";
-                    target++;                
+        for (let i=0;i<shooters.length;i++) {
+            let shooter = shooters[i].team;
+            let weapons = shooters[i].weapons;
+            let losResult = shooters[i].losResult;
+            if (shooters.length > 1) {
+                outputCard.body.push("[U]" + shooter.name + "[/u]");
+            }
+            _.each(weapons,weapon => {
+                let wtip = "";
+                let wrolls = [];
+                let target = 4;
+                let whits = 0;
+                if (target.type !== "Vehicle") {
+                    if (weapon.at !== "-") {
+                        wtip += "<br>HE Round";
+                    } else if (losResult.conceal || losResult.interConceal) {
+                        wtip += "<br>Concealment +1";
+                        target++;                
+                    }
                 }
-            }
-            if (losResult.distance > weapon.range[1]) {
-                wtip  += "<br>Long Range +1";
-                target++;
-            }
-            for (let i=0;i<weapon.rof;i++) {
-                let roll = randomInteger(6);
-                wrolls.push(roll);
-                if (roll >= target) {
-                    hits.push(weapon)
-                    whits++;
+                if (losResult.distance > weapon.range[1]) {
+                    wtip  += "<br>Long Range +1";
+                    target++;
                 }
-            }
-            wrolls.sort().reverse().toString();
-            let tip = "Rolls: " + wrolls + " vs. " + target + "+" + wtip;
-            let s = (whits === 1) ? "":"s";
-            if (whits > 0) {
-                tip = '[' + whits + '](#" class="showtip" title="' + tip + ')';   
-            } else {
-                tip = '[No](#" class="showtip" title="' + tip + ')';   
-            }
-            outputCard.body.push(weapon.name + ": " + tip + " Hit" + s);
-        })
+                for (let i=0;i<weapon.rof;i++) {
+                    let roll = randomInteger(6);
+                    wrolls.push(roll);
+                    if (roll >= target) {
+                        hits.push(weapon)
+                        whits++;
+                    }
+                }
+                wrolls.sort().reverse().toString();
+                let tip = "Rolls: " + wrolls + " vs. " + target + "+" + wtip;
+                let s = (whits === 1) ? "":"s";
+                if (whits > 0) {
+                    tip = '[' + whits + '](#" class="showtip" title="' + tip + ')';   
+                } else {
+                    tip = '[No](#" class="showtip" title="' + tip + ')';   
+                }
+                outputCard.body.push(weapon.name + ": " + tip + " Hit" + s);
+            })
+            
+
+
+
+
+        }
 
         outputCard.body.push("[hr]");
-        //distribute hits
 
+        //build array of possible targets
+        let targets = [target];
+        let keys = Object.keys(Teams);
+        for (let i=0;i<keys.length;i++) {
+            let team2 = Teams[keys[i]];
+            if (team2.id === target.id || team2.nation !== target.nation) {
+                continue;
+            }
+            let dist = target.distance(team2);
+            if (dist > 4) {continue};
+
+
+
+
+        }
+
+
+
+
+        //distribute hits
 
 
 
@@ -2887,6 +2964,9 @@ log(nonWeapons)
 
         PrintCard();
     }
+
+
+
 
 
 
@@ -2985,8 +3065,8 @@ log(nonWeapons)
             case '!Command':
                 Command(msg);
                 break;
-            case '!DirectFire':
-                DirectFire(msg);
+            case '!Fire':
+                Fire(msg);
                 break;
 
 
