@@ -807,6 +807,10 @@ const Main = (() => {
             this.notes = aa.notes || " ";
             this.command = false;
 
+            this.armourF = parseInt(aa.armourF) || "-";
+            this.armourS = parseInt(aa.armourS) || "-";
+
+
 
             this.hits = 0;
             this.squadMate = token.get("gmnotes").toString() || "";
@@ -834,9 +838,9 @@ const Main = (() => {
                 let weapon = {
                     name: wname,
                     range: wrange, //an array of min/max
-                    rof: wrof, //an array of dice
-                    at: wat,
-                    fp: wfp,
+                    rof: wrof, //# of dice
+                    at: wat, //# or -
+                    fp: wfp, //1+
                     notes: wnotes,
                 }
                 weaponArray.push(weapon);
@@ -1151,7 +1155,17 @@ log(phi)
             }
         }
 
-
+        RFP() {
+            let rfp;
+            if (this.token.get(SM.RFP) === false) {
+                rfp = 0;
+            } else if (this.token.get(SM.RFP === true)) {
+                rfp = 1;
+            } else {
+                rfp = parseInt(this.token.get(SM.RFP));
+            }
+            return rfp;
+        }
 
        
 
@@ -2931,17 +2945,17 @@ log(shooterMsgs)
                 outputCard.body.push(weapon.name + ": " + tip + " Hit" + s);
             })
             
-
-
-
-
         }
 
         outputCard.body.push("[hr]");
 
         //build array of possible targets
+        let info = {
+            team: target,
+            losResult: shooters[0].losResult,
+        }
 
-        let targets = [target];
+        let targets = [info];
         let keys = Object.keys(Teams);
         for (let i=0;i<keys.length;i++) {
             let team2 = Teams[keys[i]];
@@ -2952,9 +2966,13 @@ log(shooterMsgs)
             let dist = target.Distance(team2);
             if (dist > 4) {continue};
             for (let i=0;i<shooters.length;i++) {
-                let los = LOS(shooters[i].team,team2);
-                if (los.los === true) {
-                    targets.push(team2);
+                let losResult = LOS(shooters[i].team,team2);
+                if (losResult.los === true) {
+                    let info = {
+                        team: target,
+                        losResult: losResult,
+                    }
+                    targets.push(info);
                     break;
                 };
             }
@@ -2963,9 +2981,9 @@ log(shooterMsgs)
         //small teams at end, target team if not small team at beginning
         //sorted on distance to shooter otherwise
         targets.sort((a,b) => {
-            if (a.type === "Small Team") {return 1};
-            if (b.type === "Small Team") {return -1};
-            if (a.id !== target.id && b.id !== target.id) {
+            if (a.team.type === "Small Team") {return 1};
+            if (b.team.type === "Small Team") {return -1};
+            if (a.team.id !== target.id && b.team.id !== target.id) {
                 return team1.Distance(a) - team1.Distance(b);
             }
         })
@@ -2978,18 +2996,82 @@ _.each(targets,target => {
 })
 
 
-/*
-//clear hits on new activation
-
         //allocate 1 hit to each target 
         //distribute hits - small arms only to unarmoured
         //Non-Vehicle Teams may not be allocated more than 1 hit per activation - so if their .hit is already 1, skip them
         //Small Teams,including Leaders, are allocated hits only after all other valid Teams.
         
+        for (let i=0;i<hits.length;i++) {
+            let hit = hits[i];
+            let at = hit.at;
+            targetLoop:
+            for (let j=0;j<targets.length;j++) {
+                let target = targets[j].team;
+                let losResult = target[j].losResult;
+                let rfp = target.RFP();
+                if (target.armourF !== "-" && at === "-") {
+                    continue targetLoop;
+                }
+                if (target.type === "Vehicle" && at !== "-") {
+                    let facing = losResult.frontFacing ? "Front":"Side/Rear";
+                    let armour = losResult.frontFacing ? target.armourF:target.armourS;
+                    let tip = "Hit on " + facing + " Armour";
+                    let res;
+
+                    if (armour >= (at * 2)) {
+                        res = target.name + ": Hit Bounces Off";
+                    } else if (at > armour) {
+                        let num = at - armour;
+                        let rolls = [];
+                        let dest = false;
+                        for (let d=0;d<num;d++) {
+                            let roll = randomInteger(6);
+                            rolls.push(roll);
+                            if (roll === 6) {
+                                dest = true;
+                            }
+                        }
+                        tip += "<br>Rolls: " + rolls.toString();
+                        tip += "<br>Destroyed on a 6";
+                        if (dest === true) {
+                            res = target.name + ": Hit Destroys";
+                        } else {
+                            res = target.name + ": Hit Damages";
+                            rfp += hit.fp;
+                            target.token.set(SM.RFP,rfp);
+                            let cover = "Cover";
+                            if (type === "Direct") {
+                                if (losResult.interCover === false && losResult.cover === false) {
+                                    cover = "No Cover";
+                                }
+                            }
+                            target.token.set("bar1_value",cover)
+                        }
+                    }
 
 
-*/
+                } else {
+                    if (target.type !== "Vehicle" && target.hits > 0) {continue targetLoop};
+                    rfp += hit.fp;
+                    target.token.set(SM.RFP,rfp);
+                    target.hits++;
+                    let cover = "Cover";
+                    if (type === "Direct") {
+                        if (losResult.interCover === false && losResult.cover === false) {
+                            cover = "No Cover";
+                        }
+                    }
+                    target.token.set("bar1_value",cover)
+                    outputCard.body.push(target.name + " takes Fire");
+                }
+            }
 
+
+
+
+
+
+        }
 
 
 
@@ -3002,7 +3084,6 @@ _.each(targets,target => {
 
         PrintCard();
     }
-
 
 
 
