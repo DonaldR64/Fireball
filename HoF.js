@@ -845,7 +845,6 @@ const Main = (() => {
                 }
                 weaponArray.push(weapon);
             }
-log(weaponArray)
 
             this.weaponArray = weaponArray;
 
@@ -877,7 +876,6 @@ log(weaponArray)
             }
             let phi = Angle(HexMap[this.hexLabel].cube.angle(HexMap[b.hexLabel].cube));
             phi = Angle(phi - this.token.get("rotation"));
-log(phi)
             if (phi >= 315 || phi <= 45) {
                 result.forwardArc = true;
             } 
@@ -1159,7 +1157,7 @@ log(phi)
             let rfp;
             if (this.token.get(SM.RFP) === false) {
                 rfp = 0;
-            } else if (this.token.get(SM.RFP === true)) {
+            } else if (this.token.get(SM.RFP) === true) {
                 rfp = 1;
             } else {
                 rfp = parseInt(this.token.get(SM.RFP));
@@ -2143,7 +2141,6 @@ log(phi)
         let firstPlayer = state.HoF.nations.indexOf(firstNation);
         state.HoF.firstPlayer = firstPlayer;
         state.HoF.currentPlayer = (firstPlayer === 0) ? 1:0; //as is reversed in nextturn routine
-log(state.HoF)
 
 
         SetupCard("Setup","","Neutral");
@@ -2381,7 +2378,6 @@ log(state.HoF)
             forwardArc: shooter.Facing(target).forwardArc,
             frontFacing: target.Facing(shooter).frontFacing,
         }
-log(result)
         return result;
     }
 
@@ -2610,7 +2606,6 @@ log(result)
         //check if missing a PL, will be a single team activating initially if yes
         //need a flag to prevent doing RR twice
         let actTeamResolved = false;
-log(platoonInfo)
         if (platoonInfo.vehiclePlatoon === false && platoonInfo.leader === false) {
 
             let line = actTeam.RR();
@@ -2618,7 +2613,6 @@ log(platoonInfo)
             let actStatus = actTeam.Status();
             if (actStatus !== "Killed") {
                 let trainingCheck = actTeam.Check(0)
-log(trainingCheck)
                 if (trainingCheck.result === true) {
                     actTeam.SetStatus("Ready");
                     let leader = actTeam.NewLeader();
@@ -2844,7 +2838,6 @@ log(trainingCheck)
         SetupCard(shooterName,type + " Fire",team1.nation);
         let shooterMsgs = [];
         let shooters = [];
-log("Teams: " + teams.length)
         for (let i=0;i<teams.length;i++) {
             let shooter = teams[i];
             let losResult = LOS(shooter,target);
@@ -2954,7 +2947,8 @@ log(shooterMsgs)
             team: target,
             losResult: shooters[0].losResult,
         }
-
+log("info")
+log(info)
         let targets = [info];
         let keys = Object.keys(Teams);
         for (let i=0;i<keys.length;i++) {
@@ -2969,7 +2963,7 @@ log(shooterMsgs)
                 let losResult = LOS(shooters[i].team,team2);
                 if (losResult.los === true) {
                     let info = {
-                        team: target,
+                        team: team2,
                         losResult: losResult,
                     }
                     targets.push(info);
@@ -2978,13 +2972,14 @@ log(shooterMsgs)
             }
         }
 
+
         //small teams at end, target team if not small team at beginning
         //sorted on distance to shooter otherwise
         targets.sort((a,b) => {
             if (a.team.type === "Small Team") {return 1};
             if (b.team.type === "Small Team") {return -1};
             if (a.team.id !== target.id && b.team.id !== target.id) {
-                return team1.Distance(a) - team1.Distance(b);
+                return team1.Distance(a.team) - team1.Distance(b.team);
             }
         })
         
@@ -2992,7 +2987,7 @@ log(shooterMsgs)
 
 log("Targets")
 _.each(targets,target => {
-    log(target.name);
+    log(target.team.name);
 })
 
 
@@ -3000,26 +2995,31 @@ _.each(targets,target => {
         //distribute hits - small arms only to unarmoured
         //Non-Vehicle Teams may not be allocated more than 1 hit per activation - so if their .hit is already 1, skip them
         //Small Teams,including Leaders, are allocated hits only after all other valid Teams.
-        
+        hitLoop:
         for (let i=0;i<hits.length;i++) {
             let hit = hits[i];
             let at = hit.at;
             targetLoop:
             for (let j=0;j<targets.length;j++) {
                 let target = targets[j].team;
-                let losResult = target[j].losResult;
+                let losResult = targets[j].losResult;
                 let rfp = target.RFP();
                 if (target.armourF !== "-" && at === "-") {
+                    if (j === targets.length -1) {
+                        outputCard.body.push(hit.name + " - No Effect");
+                    }
                     continue targetLoop;
                 }
                 if (target.type === "Vehicle" && at !== "-") {
                     let facing = losResult.frontFacing ? "Front":"Side/Rear";
                     let armour = losResult.frontFacing ? target.armourF:target.armourS;
                     let tip = "Hit on " + facing + " Armour";
-                    let res;
+                    tip += "<br>AT: " + at + " vs. Armour: " + armour;
 
+                    let res;
                     if (armour >= (at * 2)) {
-                        res = target.name + ": Hit Bounces Off";
+                        tip = '[' + target.name + '](#" class="showtip" title="' + tip + ')';                       
+                        res = tip + ": Hit Bounces Off";
                     } else if (at > armour) {
                         let num = at - armour;
                         let rolls = [];
@@ -3031,6 +3031,7 @@ _.each(targets,target => {
                                 dest = true;
                             }
                         }
+                        tip 
                         tip += "<br>Rolls: " + rolls.toString();
                         tip += "<br>Destroyed on a 6";
                         tip = '[' + target.name + '](#" class="showtip" title="' + tip + ')';                        
@@ -3078,6 +3079,7 @@ _.each(targets,target => {
                         }
                     }
                     outputCard.body.push(res);
+                    continue hitLoop;
                 } else {
                     if (target.type !== "Vehicle" && target.hits > 0) {continue targetLoop};
                     rfp += hit.fp;
@@ -3091,6 +3093,7 @@ _.each(targets,target => {
                     }
                     target.token.set("bar1_value",cover)
                     outputCard.body.push(target.name + " takes Fire");
+                    continue hitLoop;
                 }
             }
 
