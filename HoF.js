@@ -3018,6 +3018,7 @@ _.each(targets,target => {
                 if (target.type === "Vehicle" && at !== "-") {
                     let facing = losResult.frontFacing ? "Front":"Side/Rear";
                     let armour = losResult.frontFacing ? target.armourF:target.armourS;
+                    if (armour === "-") {armour = 0};
                     let tip = "Hit on " + facing + " Armour";
                     tip += "<br>AT: " + at + " vs. Armour: " + armour;
 
