@@ -3033,10 +3033,39 @@ _.each(targets,target => {
                         }
                         tip += "<br>Rolls: " + rolls.toString();
                         tip += "<br>Destroyed on a 6";
+                        tip = '[' + target.name + '](#" class="showtip" title="' + tip + ')';                        
                         if (dest === true) {
-                            res = target.name + ": Hit Destroys";
+                            res = tip+ ": Hit Destroys";
                         } else {
-                            res = target.name + ": Hit Damages";
+                            res = tip + ": Hit Damages";
+                            rfp += hit.fp;
+                            target.token.set(SM.RFP,rfp);
+                            let cover = "Cover";
+                            if (type === "Direct") {
+                                if (losResult.interCover === false && losResult.cover === false) {
+                                    cover = "No Cover";
+                                }
+                            }
+                            target.token.set("bar1_value",cover)
+                        }
+                    } else { 
+                        //at <= armour
+                        let rolls = [];
+                        let rfp = false;
+                        for (let d=0;d<at;d++) {
+                            let roll = randomInteger(6);
+                            rolls.push(roll);
+                            if (roll === 6) {
+                                rfp = true;
+                            }
+                        }
+                        tip += "<br>Rolls: " + rolls.toString();
+                        tip += "<br>Damaged on a 6";
+                        tip = '[' + target.name + '](#" class="showtip" title="' + tip + ')';                        
+                        if (rfp === false) {
+                            res = tip + ": Hit Glances Off";
+                        } else {
+                            res = tip + ": Hit Damages";
                             rfp += hit.fp;
                             target.token.set(SM.RFP,rfp);
                             let cover = "Cover";
@@ -3048,8 +3077,7 @@ _.each(targets,target => {
                             target.token.set("bar1_value",cover)
                         }
                     }
-
-
+                    outputCard.body.push(res);
                 } else {
                     if (target.type !== "Vehicle" && target.hits > 0) {continue targetLoop};
                     rfp += hit.fp;
