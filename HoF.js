@@ -2947,8 +2947,7 @@ log(shooterMsgs)
             team: target,
             losResult: shooters[0].losResult,
         }
-log("info")
-log(info)
+
         let targets = [info];
         let keys = Object.keys(Teams);
         for (let i=0;i<keys.length;i++) {
@@ -2960,11 +2959,14 @@ log(info)
             let dist = target.Distance(team2);
             if (dist > 4) {continue};
             for (let i=0;i<shooters.length;i++) {
-                let losResult = LOS(shooters[i].team,team2);
-                if (losResult.los === true) {
+                let losResult2 = LOS(shooters[i].team,team2);
+log(team2.name)
+log(losResult2)
+
+                if (losResult2.los === true) {
                     let info = {
                         team: team2,
-                        losResult: losResult,
+                        losResult: losResult2,
                     }
                     targets.push(info);
                     break;
@@ -2979,7 +2981,7 @@ log(info)
             if (a.team.type === "Small Team") {return 1};
             if (b.team.type === "Small Team") {return -1};
             if (a.team.id !== target.id && b.team.id !== target.id) {
-                let delta = target.Distance(a.team) === target.Distance(b.team)
+                let delta = target.Distance(a.team) - target.Distance(b.team)
                 if (delta === 0) {
                     return team1.Distance(a.team) - team1.Distance(b.team);
                 } 
@@ -3007,7 +3009,8 @@ _.each(targets,target => {
             targetLoop:
             for (let j=0;j<targets.length;j++) {
                 let target = targets[j].team;
-                let losResult = targets[j].losResult;
+                let losResult2 = targets[j].losResult;
+                let cover = (losResult2.cover === true || losResult2.interCover === true) ? "Cover":"No Cover"; 
                 let rfp = target.RFP();
                 if (target.armourF !== "-" && at === "-") {
                     if (j === targets.length -1) {
@@ -3016,8 +3019,8 @@ _.each(targets,target => {
                     continue targetLoop;
                 }
                 if (target.type === "Vehicle" && at !== "-") {
-                    let facing = losResult.frontFacing ? "Front":"Side/Rear";
-                    let armour = losResult.frontFacing ? target.armourF:target.armourS;
+                    let facing = losResult2.frontFacing ? "Front":"Side/Rear";
+                    let armour = losResult2.frontFacing ? target.armourF:target.armourS;
                     if (armour === "-") {armour = 0};
                     let tip = "Hit on " + facing + " Armour";
                     tip += "<br>AT: " + at + " vs. Armour: " + armour;
@@ -3043,17 +3046,11 @@ _.each(targets,target => {
                         tip = '[' + target.name + '](#" class="showtip" title="' + tip + ')';                        
                         if (dest === true) {
                             res = tip+ ": Hit Destroys";
+                            target.SetStatus("Killed");
                         } else {
                             res = tip + ": Hit Damages";
                             rfp += hit.fp;
                             target.token.set(SM.RFP,rfp);
-                            let cover = "Cover";
-                            if (type === "Direct") {
-                                if (losResult.interCover === false && losResult.cover === false) {
-                                    cover = "No Cover";
-                                }
-                            }
-                            target.token.set("bar1_value",cover)
                         }
                     } else { 
                         //at <= armour
@@ -3075,13 +3072,6 @@ _.each(targets,target => {
                             res = tip + ": Hit Damages";
                             rfp += hit.fp;
                             target.token.set(SM.RFP,rfp);
-                            let cover = "Cover";
-                            if (type === "Direct") {
-                                if (losResult.interCover === false && losResult.cover === false) {
-                                    cover = "No Cover";
-                                }
-                            }
-                            target.token.set("bar1_value",cover)
                         }
                     }
                     outputCard.body.push(res);
@@ -3091,12 +3081,6 @@ _.each(targets,target => {
                     rfp += hit.fp;
                     target.token.set(SM.RFP,rfp);
                     target.hits++;
-                    let cover = "Cover";
-                    if (type === "Direct") {
-                        if (losResult.interCover === false && losResult.cover === false) {
-                            cover = "No Cover";
-                        }
-                    }
                     target.token.set("bar1_value",cover)
                     outputCard.body.push(target.name + " takes Fire");
                     continue hitLoop;
