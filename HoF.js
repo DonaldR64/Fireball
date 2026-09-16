@@ -2974,12 +2974,17 @@ log(info)
 
 
         //small teams at end, target team if not small team at beginning
-        //sorted on distance to shooter otherwise
+        //sorted on distance from target 1st and if equal, closest to shooter
         targets.sort((a,b) => {
             if (a.team.type === "Small Team") {return 1};
             if (b.team.type === "Small Team") {return -1};
             if (a.team.id !== target.id && b.team.id !== target.id) {
-                return team1.Distance(a.team) - team1.Distance(b.team);
+                let delta = target.Distance(a.team) === target.Distance(b.team)
+                if (delta === 0) {
+                    return team1.Distance(a.team) - team1.Distance(b.team);
+                } 
+                if (delta < 0) {return -1};
+                if (delta > 0) {return 1};
             }
         })
         
